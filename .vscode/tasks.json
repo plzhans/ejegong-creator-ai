@@ -1,0 +1,13 @@
+{
+    "tasks": [
+        {
+            "type": "typescript",
+            "tsconfig": "nodejs/service-worker/tsconfig.json",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "group": "build",
+            "label": "tsc: build - service-worker"
+        }
+    ]
+}

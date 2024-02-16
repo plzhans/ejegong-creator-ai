@@ -1,0 +1,17 @@
+{
+    //"plantuml.diagramsRoot": "docs/diagrams/src",
+    "plantuml.exportOutDir": "docs/diagrams",
+    //"plantuml.includepaths": ["docs/diagrams/style","docs/diagrams/src"],
+    "plantuml.exportFormat": "svg",
+    "plantuml.exportSubFolder": false,
+    "plantuml.exportIncludeFolderHeirarchy":false,
+    "plantuml.previewAutoUpdate": true,
+    //"plantuml.lintDiagramNoName":true
+    "files.exclude": {
+        "nodejs/**/node_modules": true,
+        "nodejs/**/dist": true,
+        "nodejs/**/out": true,
+    },
+    "compile-hero.disable-compile-files-on-did-save-code": true,
+    "jest.runMode": "on-demand"
+}
