@@ -6,7 +6,7 @@
     "configurations": [
         {
             "type": "node",
-            "runtimeVersion": "20.11.0",
+            "runtimeVersion": "20.11.1",
             "request": "launch",
             "name": "Debug - service-worker",
             "skipFiles": [
@@ -18,9 +18,9 @@
             "outFiles": ["${workspaceFolder}/nodejs/service-worker/dist/**/*.js"],
             // "args": ["-r", "tsconfig-paths/register", "${workspaceFolder}/nodejs/service-worker/src/index.ts"],
             "sourceMaps": true,
-            "cwd": "${workspaceFolder}/nodejs/service-worker",
+            // "cwd": "${workspaceFolder}/nodejs/service-worker",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-           
         }
     ]
 }
