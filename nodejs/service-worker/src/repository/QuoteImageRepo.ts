@@ -1,9 +1,9 @@
+import { getAppConfig } from "../config";
 import Airtable, {FieldSet, Record, Table} from "airtable";
-import { config, AirtableConfig } from "../config";
 import { QutoeImageDto } from "../datatypes/QuoteImageDto";
-import { UrlAttachment } from "../datatypes/Common";
+import { AirtableSchemaOptions, UrlAttachment } from "../datatypes/Common";
 
-interface QuoteImageRepo {
+export interface QuoteImageRepo {
     get(recordId: string): Promise<QutoeImageDto|undefined>;
     getListByParentRecordId(recordId: string, maxRecords: number): Promise<Array<QutoeImageDto>>;
     insert(data:QutoeImageDto):Promise<QutoeImageDto | undefined>;
@@ -12,15 +12,17 @@ interface QuoteImageRepo {
 }
 
 export class QuoteImageRepoImpl implements QuoteImageRepo {
+   
+    options:AirtableSchemaOptions;
 
-    private _airtable:Airtable;
-    private _airtable_opt:AirtableConfig;
+    constructor(options:AirtableSchemaOptions) {
+        this.options = options;
+    }
 
-    constructor(opt:AirtableConfig) {
-        this._airtable_opt = opt;
-        this._airtable = new Airtable({
-            apiKey: opt.token,
-        });
+    getDefaultBase(): Table<FieldSet>{
+        const airtable = this.options.getAirtable();
+        const base = airtable.base(this.options.baseId).table(this.options.tableId);
+        return base;
     }
     
     parseQuoteImageDto(record: Record<FieldSet>): QutoeImageDto | undefined {
@@ -139,13 +141,6 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
         return dto;
     }
 
-    getDefaultBase(): Table<FieldSet>{
-        const baseName = this._airtable_opt.schema.quote_image.base;
-        const tableName = this._airtable_opt.schema.quote_image.table;
-        const base = this._airtable.base(baseName).table(tableName);
-        return base;
-    }
-
     async get(recordId: string): Promise<QutoeImageDto|undefined> {
         const base = this.getDefaultBase();
 
@@ -159,7 +154,7 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
         let list = new Array<QutoeImageDto>();
         await base.select({
             maxRecords: maxRecords,
-            filterByFormula: `{quotes_record_id}=\"${recordId}\"`
+            filterByFormula: `{quotes_record_id}="${recordId}"`
         }).eachPage((records,next)=>{
             records.forEach(record=>{
                 let data = this.parseQuoteImageDto(record);
@@ -175,6 +170,3 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
         return list;
     }
 }
-
-export const QuoteImageRepoInst:QuoteImageRepo = new QuoteImageRepoImpl(config.airtable);
-

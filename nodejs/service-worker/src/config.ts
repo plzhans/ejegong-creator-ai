@@ -1,110 +1,299 @@
 import dotenv from "dotenv";
 import yaml from "js-yaml";
-import { readFileSync } from "fs";
+import * as fs from 'fs';
 import { join } from "path";
-import { isEmpty } from "lodash";
+import Airtable from "airtable";
 
-// .env 파일로부터 환경변수 값을 읽어와서 사용한다.
 dotenv.config();
 
-// APP_CONFIG_FILE 환경변수에 YAML 파일의 경로가 정의되어 있다면 경로를 불러온다. 
-const yaml_config_filename = process.env.APP_CONFIG_FILE;
-let yaml_config:AppConfig;
-try {
-  const custom_config:any = yaml_config_filename
-    ? yaml.load(readFileSync(yaml_config_filename, "utf8"))
-    : {};
-  const default_config:any = yaml.load(
-    readFileSync(join('./config/', "default.yaml"), "utf8")
-  );
-  yaml_config = {
-    ...default_config,
-    ...custom_config,
+interface ConfigMap{
+  name: string,
+  map: Map<string,string>
+}
+
+export class ConfigBuilder {
+
+  maps:Array<ConfigMap>;
+
+  constructor(){
+    this.maps = new Array<ConfigMap>();
+  }
+  
+  add(name:string, map:Map<string,string>){
+    const finalMap = new Map<string, string>();
+    map.forEach((value,key)=>{
+      const finalKey = key.replace(/__/g, ".");
+      finalMap.set(finalKey.toLowerCase(), value);
+    });
+    this.maps.push({name:name, map:finalMap})
+  }
+
+  addEnv(prefix:string="AppSettings__"){
+    const map = new Map<string,string>();
+    for (const envKey in process.env) {
+      if (envKey.startsWith(prefix)) {
+        const finalKey = envKey.slice(prefix.length).replace(/__/g, ".");
+        const value = process.env[envKey];
+        if(value){
+          map.set(finalKey.toLowerCase(), value);
+        }
+      }
+    }
+    this.maps.push({name:"env", map:map})
+  }
+
+  addAirtable(name:string, input:Map<string,string>){
+    const map = new Map<string,string>();
+    input.forEach((value, key)=>{
+      const finalKey = key.replace(/__/g, ".");
+      map.set(finalKey.toLowerCase(), value);
+    });
+    this.maps.push({name:name, map:map})
+  }
+
+  toJson():string {
+    return "{}";
+  }
+
+  public build():Configuration {
+    const configuration = new Configuration(this.maps);
+    return configuration;
   };
-} catch (err) {
-  console.error(err);
-  throw new Error("error");
 }
 
-export interface AirtableSchemaItemConfig {
-  base: string,
-  table: string
+export class Configuration {
+  map:Map<string,string>;
+
+  constructor(inputs:Array<ConfigMap>){
+    const finalMap = new Map<string,string>();
+    inputs.forEach(input => {
+      input.map.forEach((value,key)=>{
+        finalMap.set(key, value);
+      });
+    });
+    this.map = finalMap;
+  }
+
+  getString(name:string):string|undefined{
+    let value = this.map.get(name);
+    return value;
+  }
+
+  getStringOrThrow(name:string):string{
+    let value = this.getString(name);
+    if(!value){
+      throw new Error(`Invalid configuration. name=${name}`);
+    }
+    return value;
+  }
+  
+  getNumber(name:string):number|undefined{
+    let value = this.map.get(name);
+    if(!value || value === ""){
+      return undefined;
+    }
+
+    const number = Number(value);
+    if(isNaN(number)){
+      return undefined;
+    }
+    return number;
+  }
+
+  getNumberOrThrow(name:string):number{
+    let value = this.getNumber(name);
+    if(!value){
+      throw new Error(`Invalid configuration. name=${name}`);
+    }
+    return value;
+  }
 }
 
-export interface AirtableSchemaConfig {
-  quote: AirtableSchemaItemConfig
-  quote_image: AirtableSchemaItemConfig
+function flattenYamlObject(yamlObject: any, parentKey = ''): Map<string, string> {
+  const map = new Map<string, string>();
+
+  for (const key in yamlObject) {
+    const currentKey = parentKey ? `${parentKey}.${key}` : key;
+
+    if (typeof yamlObject[key] === 'string') {
+      map.set(currentKey, yamlObject[key]);
+    } else if (typeof yamlObject[key] === 'object') {
+      // Recursively handle nested objects
+      const nestedMap = flattenYamlObject(yamlObject[key], currentKey);
+      nestedMap.forEach((value, nestedKey) => {
+        map.set(nestedKey, value);
+      });
+    }
+  }
+
+  return map;
 }
 
-export interface AirtableConfig {
-  token: string,
-  schema: AirtableSchemaConfig
+
+function getMapByYaml():Map<string,string>{
+  const filePath = join('./config/', "default.yaml");
+  try {
+    const map = new Map<string,string>();
+
+    if(fs.existsSync(filePath)){
+      const yamlObject:any = yaml.load(
+        fs.readFileSync(filePath, "utf8")
+      );
+      const flattenedMap = flattenYamlObject(yamlObject);
+      flattenedMap.forEach((value,key)=>{
+        map.set(key, value);
+      });
+    } else {
+      console.debug(`Notfound config file. path=${filePath}`);
+    }
+    return map;
+  } catch (err) {
+    console.error(err);
+    throw new Error(`yaml load fail. path=${filePath}`);
+  }
+}
+
+async function getAirtableConfigMap(token:string, baseName:string, tableName:string):Promise<Map<string,string>>{
+  const airtable = new Airtable({
+      apiKey: token,
+  });
+
+  let map = new Map<string,string>();
+
+  const table = airtable.base(baseName).table(tableName);
+  await table.select({
+      filterByFormula: "{Name}"
+  }).eachPage((records,next)=>{
+      records.forEach(record=>{
+          const name = record.get("Name")?.toString();
+          if(name){
+          const value = record.get("Value")?.toString() ?? "";
+            map.set(name, value);
+          }
+      });
+      next();
+  }).catch(err => {
+      console.error(err);
+      map.clear();
+  })
+  return map;
+}
+
+async function getConfiguration():Promise<Configuration>{
+  const map = getMapByYaml();
+
+  // default
+  const defaultBuilder = new ConfigBuilder();
+  defaultBuilder.add("yaml", map);
+  defaultBuilder.addEnv();
+  const defaultConfig = defaultBuilder.build();
+
+  // final
+  const airtableApiKey = defaultConfig.getStringOrThrow("airtable.token");
+  const airtableBaseId = defaultConfig.getStringOrThrow("airtable.config.base");
+  const airtableTableId = defaultConfig.getStringOrThrow("airtable.config.table");
+
+  const airtableConfigMap = await getAirtableConfigMap(airtableApiKey, airtableBaseId, airtableTableId);
+
+  const builder = new ConfigBuilder();
+  builder.addAirtable(`airtable:${airtableBaseId}:${airtableTableId}`, airtableConfigMap);
+  builder.add("yaml", map);
+  builder.addEnv();
+  return builder.build();
+}
+
+export async function initConfig():Promise<AppConfig>{
+  const configuration = await getConfiguration();
+  const config:AppConfig = {
+    google: {
+      service_account: JSON.parse(configuration.getStringOrThrow("google.service_account"))
+    },
+    airtable: {
+      token: configuration.getStringOrThrow("airtable.token"),
+      tables: {
+        quote: configuration.getStringOrThrow("airtable.tables.quote"),
+        quote_image: configuration.getStringOrThrow("airtable.tables.quote_image")
+      }
+    },
+    useapi: {
+      token: configuration.getStringOrThrow("useapi.token"),
+      midjourney: {
+        discord_token: configuration.getStringOrThrow("useapi.midjourney.discord_token"),
+        discord_server: configuration.getStringOrThrow("useapi.midjourney.discord_server"),
+        discord_channel: configuration.getStringOrThrow("useapi.midjourney.discord_channel"),
+      }
+    }
+  };
+  _appConfig = config;
+  return config;
+}
+
+export interface GoogleServiceAccount {
+  type: string,
+  project_id: string,
+  private_key_id: string,
+  private_key: string,
+  client_email: string,
+  client_id: string,
+  auth_uri: string,
+  token_uri: string,
+  auth_provider_x509_cert_url: string,
+  client_x509_cert_url: string,
+  universe_domain: string,
 }
 
 export interface AppConfig{
-  airtable: AirtableConfig
-  useapi: UseapiConfig
-}
-
-export interface UseapiConfig {
-  token: string,
-  midjourney: MidjourneyConfig
-}
-
-export interface MidjourneyConfig {
-  discord_token: string,
-  discord_server: string,
-  discord_channel: string,
-}
-
-// config 우선순위 (환경변수 > APP_CONFIG_FILE 경로의 YAML > default)
-const _config: AppConfig = {
-  airtable: {
-    token: process.env.AIRTABLE_TOKEN ?? yaml_config.airtable?.token,
-    schema: {
-      quote: {
-        base: process.env.AIRTABLE_SCHEMA_QUOTE_BASE ?? yaml_config.airtable?.schema?.quote?.base,
-        table: process.env.AIRTABLE_SCHEMA_QUOTE_TABLE ?? yaml_config.airtable?.schema?.quote?.table
-      },
-      quote_image: {
-        base: process.env.AIRTABLE_SCHEMA_QUOTE_IMAGE_BASE ?? yaml_config.airtable?.schema?.quote_image?.base,
-        table: process.env.AIRTABLE_SCHEMA_QUOTE_IMAGE_TABLE ?? yaml_config.airtable?.schema?.quote_image?.table
-      }
-    }
+  google: {
+    service_account: GoogleServiceAccount,
   },
-  useapi: {
-    token: process.env.USEAPI_TOKEN ?? yaml_config.useapi?.token,
-    midjourney: {
-      discord_token : process.env.USEAPI_MIDJOURNEY_DISCORD_TOKEN ?? yaml_config.useapi?.midjourney?.discord_token,
-      discord_server : process.env.USEAPI_MIDJOURNEY_DISCORD_SERVER ?? yaml_config.useapi?.midjourney?.discord_server,
-      discord_channel : process.env.USEAPI_MIDJOURNEY_DISCORD_CHANNEL ?? yaml_config.useapi?.midjourney?.discord_channel,
+  airtable: {
+    token: string,
+    tables: {
+      quote: string,
+      quote_image: string
     }
   }
-};
-
-if (isEmpty(_config.airtable.token)){
-  throw new Error("config airtable.token empty.");
-}
-if (isEmpty(_config.airtable.schema.quote.base)){
-  throw new Error("config airtable.schema.quote.base empty.");
-}
-if (isEmpty(_config.airtable.schema.quote.table)){
-  throw new Error("config airtable.schema.quote.table empty.");
-}
-if (isEmpty(_config.useapi.token)){
-  throw new Error("config useapi.token empty.");
+  useapi: {
+    token: string,
+    midjourney: {
+      discord_token: string,
+      discord_server: string,
+      discord_channel: string,
+    }
+  }
 }
 
-if (isEmpty(_config.useapi.midjourney.discord_token)){
-  throw new Error("config useapi.midjourney.discord_token empty.");
-}
+let _appConfig:AppConfig|undefined = undefined;
 
-if (isEmpty(_config.useapi.midjourney.discord_server)){
-  throw new Error("config useapi.midjourney.discord_server empty.");
+export function getAppConfig():AppConfig{
+  if (!_appConfig){
+    throw new Error("appConfig is undefined");
+  }
+  return _appConfig;
 }
+// export class ConfigFactory {
+  
+//   private appConfig:AppConfig|undefined;
+  
+//   public getConfig():AppConfig{
+//     if(!this.appConfig){
+//       throw new Error("appConfig is undefined.");
+//     }
+//     return this.appConfig;
+//   }
 
-if (isEmpty(_config.useapi.midjourney.discord_channel)){
-  throw new Error("config useapi.midjourney.discord_channel empty.");
-}
+//   public getAirtable(): Airtable{
+//     const config = this.getConfig();
+//     const airtable = new Airtable({
+//         apiKey: config.airtable.token,
+//     });
+//     return airtable;
+//   }
 
-export const config = _config;
+// }
+
+// const configFactory = new ConfigFactory();
+
+// export function getConfigFacotry():ConfigFactory {
+//   return configFactory;
+// }

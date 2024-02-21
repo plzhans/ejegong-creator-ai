@@ -1,32 +1,26 @@
-import Airtable, {FieldSet, Record, Table} from "airtable";
-import { config, AirtableConfig } from "../config";
+import { FieldSet, Record, Table} from "airtable";
 import { QuoteDto } from "../datatypes/QuoteDto";
+import { AirtableSchemaOptions } from "../datatypes/Common";
 
-interface QuoteRepo {
-    get_ready_one():Promise<QuoteDto | null>;
-    update(recordId:string, data:QuoteDto):Promise<QuoteDto | null>;
+export interface QuoteRepo {
+    get_ready_one():Promise<QuoteDto | undefined>;
+    update(recordId:string, data:QuoteDto):Promise<QuoteDto | undefined>;
 }
 
 export class QuoteRepoImpl implements QuoteRepo {
+    options:AirtableSchemaOptions;
 
-    private _airtable:Airtable;
-    private _airtable_opt:AirtableConfig;
-
-    constructor(opt:AirtableConfig) {
-        this._airtable_opt = opt;
-        this._airtable = new Airtable({
-            apiKey: opt.token,
-        });
+    constructor(options:AirtableSchemaOptions) {
+        this.options = options;
     }
 
     getDefaultBase(): Table<FieldSet>{
-        const baseName = this._airtable_opt.schema.quote.base;
-        const tableName = this._airtable_opt.schema.quote.table;
-        const base = this._airtable.base(baseName).table(tableName);
+        const airtable = this.options.getAirtable();
+        const base = airtable.base(this.options.baseId).table(this.options.tableId);
         return base;
     }
 
-    parseQuoteDto(record: Record<FieldSet>): QuoteDto | null {
+    parseQuoteDto(record: Record<FieldSet>): QuoteDto | undefined {
         let record_id = record.get("RECORD_ID")?.toString();
         if (record_id){
             let data:QuoteDto = {
@@ -41,10 +35,10 @@ export class QuoteRepoImpl implements QuoteRepo {
             };
             return data;
         }
-        return null;
+        return undefined;
     }
 
-    async update(recordId:string, input: QuoteDto): Promise<QuoteDto | null> {
+    async update(recordId:string, input: QuoteDto): Promise<QuoteDto | undefined> {
         const base = this.getDefaultBase();
 
         let data:any = {};
@@ -60,7 +54,7 @@ export class QuoteRepoImpl implements QuoteRepo {
         return dto;
     }
 
-    async get_ready_one():Promise<QuoteDto | null> {
+    async get_ready_one():Promise<QuoteDto | undefined> {
 
         try {
             const base = this.getDefaultBase();
@@ -76,10 +70,6 @@ export class QuoteRepoImpl implements QuoteRepo {
         } catch(err){
             console.error(err);
         }
-        return null;
+        return undefined;
     }
-
 }
-
-export const QuoteRepoInst:QuoteRepo = new QuoteRepoImpl(config.airtable);
-

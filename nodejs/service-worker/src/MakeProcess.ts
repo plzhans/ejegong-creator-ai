@@ -1,45 +1,40 @@
-import { QuoteRepoInst } from './repository/QuoteRepo';
 import { QuoteDto } from "./datatypes/QuoteDto";
-import { QuoteImageRepoInst } from './repository/QuoteImageRepo';
 import { QutoeImageDto } from './datatypes/QuoteImageDto';
 import { isEmpty } from 'lodash';
-import { MidjourneyApi } from './lib/lib';
+import { midjourneyApi } from './lib/lib';
 import { JobButtonRequest, JobImagineRequest } from 'useapi-lib';
 import { UrlAttachment } from './datatypes/Common';
+import { QuoteImageRepo, QuoteRepo } from "./repository/repo";
 
-async function main(): Promise<void> {
-    await make_quote_image();
+export async function getReadOne(): Promise<QuoteDto | undefined>{
+    let quote = await QuoteRepo().get_ready_one();
+    return quote;
 }
 
-async function make_quote_image(): Promise<void>{
+export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
 
-    let quote = await QuoteRepoInst.get_ready_one();
-    if(!quote) {
-        console.debug(`record[]: continue.`);
-        return;
-    }
     if(!quote.contentsEng || !quote.contentsKor) {
         console.error(`record[${quote.recordId}]: empty contents`);
-        await set_quote_image_process_error(quote);
+        await setQuoteImageProcessError(quote);
         return;
     }
 
     let arrayContentsEng = quote.contentsEng.split('\n').filter(Boolean);
     if (arrayContentsEng.length != quote.contentCount) {
         console.error(`record[${quote.recordId}]: invalid contents_eng count. length=${arrayContentsEng.length}, count=${quote.contentCount}`);
-        await set_quote_image_process_error(quote);
+        await setQuoteImageProcessError(quote);
         return;
     }
 
     let arrayContentsKor = quote.contentsKor.split('\n').filter(Boolean);
     if (arrayContentsKor.length != quote.contentCount) {
         console.error(`record[${quote.recordId}]: invalid contents_kor. length=${arrayContentsKor.length}, count=${quote.contentCount}`);
-        await set_quote_image_process_error(quote);
+        await setQuoteImageProcessError(quote);
         return;
     }
 
     // 기존 이미지 프로세싱 데이터 불러오기
-    let prevImageList = await QuoteImageRepoInst.getListByParentRecordId(quote.recordId, quote.contentCount);
+    let prevImageList = await QuoteImageRepo().getListByParentRecordId(quote.recordId, quote.contentCount);
     let imageMap = prevImageList.reduce((map, data) => {
         map.set(`${data.parentId}:${data.quotesIndex}`, data);
         return map;
@@ -70,7 +65,7 @@ async function make_quote_image(): Promise<void>{
         let prev = imageMap.get(key);
         if(prev){
             if(prev.quotesTextEng !== contents){
-                const removeResult = await QuoteImageRepoInst.remove(prev.recordId);
+                const removeResult = await QuoteImageRepo().remove(prev.recordId);
                 if(!removeResult){
                     console.error(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo remove error. record_id=${prev.recordId}`);
                     break;
@@ -90,7 +85,7 @@ async function make_quote_image(): Promise<void>{
                 status: "ready",
                 //updated: string,
             };
-            prev = await QuoteImageRepoInst.insert(newQuoteImage);
+            prev = await QuoteImageRepo().insert(newQuoteImage);
             if(!prev){
                 console.error(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo insert error.`);
                 break;
@@ -105,11 +100,11 @@ async function make_quote_image(): Promise<void>{
             let whileFlag = true;
             while(whileFlag) {
                 if(!targetJobId){
-                    const prompt = create_image_prompt(contents);
+                    const prompt = createImagePrompt(contents);
                     const imagineReq = new JobImagineRequest(prompt);
-                    const imagineRes = await MidjourneyApi.jobImagine(imagineReq);
+                    const imagineRes = await midjourneyApi().jobImagine(imagineReq);
                     if (imagineRes.isOk()) {
-                        const updateResult = await QuoteImageRepoInst.update(prev.recordId, {
+                        const updateResult = await QuoteImageRepo().update(prev.recordId, {
                             recordId: "",
                             status: "imagine",
                             midjourneyJobId: imagineRes.jobid
@@ -126,11 +121,11 @@ async function make_quote_image(): Promise<void>{
                         await new Promise(resolve => setTimeout(resolve, 1000 * 30));
                     } else {
                         console.error(`record[${quote.recordId}][${loopIndex}]: MidjourneyApi.jobImagine fail. code=${imagineRes.code}, error=${imagineRes.error}`);
-                        await set_quote_image_process_error(quote);
+                        await setQuoteImageProcessError(quote);
                         return;
                     }   
                 } else {
-                    const jobRes = await MidjourneyApi.getJob(targetJobId);
+                    const jobRes = await midjourneyApi().getJob(targetJobId);
                     if(jobRes.isOk()){
                         switch(jobRes.status) {
                             case "completed":
@@ -139,9 +134,9 @@ async function make_quote_image(): Promise<void>{
                                 switch(jobRes.verb){
                                     case "imagine":
                                         const buttonReq = new JobButtonRequest(targetJobId, "U1");
-                                        const buttonRes = await MidjourneyApi.jobButton(buttonReq);
+                                        const buttonRes = await midjourneyApi().jobButton(buttonReq);
                                         if( buttonRes.isOk() ){
-                                            const updateResult = await QuoteImageRepoInst.update(prev.recordId, {
+                                            const updateResult = await QuoteImageRepo().update(prev.recordId, {
                                                 recordId: "",
                                                 status: "upscale",
                                                 midjourneyJobId: buttonRes.jobid
@@ -159,7 +154,7 @@ async function make_quote_image(): Promise<void>{
                                             await new Promise(resolve => setTimeout(resolve, 1000 * 30));
                                         } else {
                                             console.error(`record[${quote.recordId}][${loopIndex}]: MidjourneyApi.jobButton fail. jobId=${jobRes.jobid}, code=${buttonRes.code}, error=${buttonRes.error}`);
-                                            await set_quote_image_process_error(quote);
+                                            await setQuoteImageProcessError(quote);
                                             return;
                                         }
                                         break;
@@ -172,7 +167,7 @@ async function make_quote_image(): Promise<void>{
 
                                             console.debug(`record[${quote.recordId}][${loopIndex}]: Midjourne ${jobRes.verb} ok. url=${jobRes.attachments[0].url}`);
 
-                                            const quoteUpdated = await QuoteImageRepoInst.update(prev.recordId, {
+                                            const quoteUpdated = await QuoteImageRepo().update(prev.recordId, {
                                                 recordId: prev.recordId,
                                                 quotesIndex: quotesIndex,
                                                 status: "completed",
@@ -190,12 +185,12 @@ async function make_quote_image(): Promise<void>{
                                                 console.debug(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo update ok`);
                                             } else {
                                                 console.error(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo update error.`);
-                                                await set_quote_image_process_error(quote);
+                                                await setQuoteImageProcessError(quote);
                                                 return;
                                             }
                                         } else {
                                             console.error(`record[${quote.recordId}][${loopIndex}]: Midjourney attachments error. jobId=${targetJobId}`);
-                                            await set_quote_image_process_error(quote);
+                                            await setQuoteImageProcessError(quote);
                                             return;
                                         }
                                         break;
@@ -210,18 +205,18 @@ async function make_quote_image(): Promise<void>{
                                 await new Promise(resolve => setTimeout(resolve, 1000 * 20));
                                 break;
                             default:
-                                const updateResult = await QuoteImageRepoInst.update(prev.recordId, {
+                                const updateResult = await QuoteImageRepo().update(prev.recordId, {
                                     recordId: "",
                                     status: `error:${jobRes.status}`,
                                     midjourneyJobId: jobRes.jobid
                                 });
                                 console.error(`record[${quote.recordId}][${loopIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, status=${jobRes.status}`);
-                                await set_quote_image_process_error(quote);
+                                await setQuoteImageProcessError(quote);
                                 return;
                         }
                     } else {
                         console.error(`record[${quote.recordId}][${loopIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, code=${jobRes.code}, error=${jobRes.error}`);
-                        await set_quote_image_process_error(quote);
+                        await setQuoteImageProcessError(quote);
                         return;
                     }
                 }
@@ -236,11 +231,11 @@ async function make_quote_image(): Promise<void>{
 
     if(finalImages.length != quote.contentCount){
         console.error(`record[${quote.recordId}]: invalid image count. length=${finalImages.length}, count=${quote.contentCount}`);
-        await set_quote_image_process_error(quote);
+        await setQuoteImageProcessError(quote);
         return;
     }
 
-    const updateResult = await QuoteRepoInst.update(quote.recordId, {
+    const updateResult = await QuoteRepo().update(quote.recordId, {
         recordId: quote.recordId,
         images: finalImages,
         imageStatus: "completed"
@@ -250,19 +245,15 @@ async function make_quote_image(): Promise<void>{
     }
 }
 
-function create_image_prompt(content:string){
+function createImagePrompt(content:string){
     const finalContent = content.replace(/"/g, ' ');
     return `create an image that goes well with the following sentence. "${finalContent}" —ar 3:4 —q .25`;
 }
 
-async function set_quote_image_process_error(data:QuoteDto): Promise<QuoteDto | null> {
+async function setQuoteImageProcessError(data:QuoteDto): Promise<QuoteDto | null> {
     let update:QuoteDto = {
         recordId: data.recordId,
         imageStatus: "worker_error"
     }
     return update;
 }
-
-main().catch(err=>{
-    console.error(err);
-});
