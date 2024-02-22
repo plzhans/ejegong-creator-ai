@@ -1,4 +1,3 @@
-import { getAppConfig } from "../config";
 import Airtable, {FieldSet, Record, Table} from "airtable";
 import { QutoeImageDto } from "../datatypes/QuoteImageDto";
 import { AirtableSchemaOptions, UrlAttachment } from "../datatypes/Common";

@@ -34,6 +34,7 @@ async function main(): Promise<void> {
                     await sleep(1000);
                 }
             }
+            console.debug("sleep... 60s");
             await sleep(1000 * 60);
         }
     }

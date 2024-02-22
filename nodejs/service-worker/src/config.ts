@@ -190,8 +190,12 @@ async function getConfiguration():Promise<Configuration>{
 
   // final
   const airtableApiKey = defaultConfig.getStringOrThrow("airtable.token");
-  const airtableBaseId = defaultConfig.getStringOrThrow("airtable.config.base");
-  const airtableTableId = defaultConfig.getStringOrThrow("airtable.config.table");
+  const airtableTableBase = defaultConfig.getStringOrThrow("airtable.tables.config").split('/');
+  if(airtableTableBase.length < 2){
+    throw new Error("Invalid config value. name=airtable.tables.config");
+  }
+  const airtableBaseId = airtableTableBase[0];
+  const airtableTableId = airtableTableBase[1];
 
   const airtableConfigMap = await getAirtableConfigMap(airtableApiKey, airtableBaseId, airtableTableId);
 
@@ -211,6 +215,7 @@ export async function initConfig():Promise<AppConfig>{
     airtable: {
       token: configuration.getStringOrThrow("airtable.token"),
       tables: {
+        config: configuration.getStringOrThrow("airtable.tables.config"),
         quote: configuration.getStringOrThrow("airtable.tables.quote"),
         quote_image: configuration.getStringOrThrow("airtable.tables.quote_image")
       }
@@ -249,6 +254,7 @@ export interface AppConfig{
   airtable: {
     token: string,
     tables: {
+      config: string,
       quote: string,
       quote_image: string
     }

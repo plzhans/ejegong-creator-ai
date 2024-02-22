@@ -1,5 +1,6 @@
 import {instanceToPlain, plainToInstance} from "class-transformer";
 import {JobImagineRequest, GetJobResponse, JobImagineResponse, JobButtonRequest, JobButtonResponse } from "./MidjourneyTypes";
+import {Semaphore} from "async-mutex"
 
 export interface MidjourneyApi {
     getJob(jobid:string):Promise<GetJobResponse>;
@@ -17,11 +18,16 @@ export class MidjourneyApiOptions {
         private token:string,
         private defaultDiscordToken?:string,
         private defaultDiscordServer?:string,
-        private defaultDiscordChannel?:string
+        private defaultDiscordChannel?:string,
+        private jobSemaphore:number = 0
     ){}
 
     public getToken():string {
         return this.token;
+    }
+
+    public getSemaphore():number {
+        return this.jobSemaphore ?? 0;
     }
 
     public getDefaultDiscordToken():string | undefined {
@@ -38,10 +44,15 @@ export class MidjourneyApiOptions {
 }
 
 export class MidjourneyApiImpl implements MidjourneyApi {
+    private semaphore:Semaphore|undefined;
     private options:MidjourneyApiOptions;
 
     constructor(options:MidjourneyApiOptions){
         this.options = options;
+        const semaphoreCap = options.getSemaphore();
+        if(semaphoreCap > 0){
+            this.semaphore = new Semaphore(semaphoreCap);
+        }
     }
 
     getDefaultHeader():any {
@@ -64,8 +75,6 @@ export class MidjourneyApiImpl implements MidjourneyApi {
     }
 
     async jobImagine(request:JobImagineRequest): Promise<JobImagineResponse> {
-        const url = "https://api.useapi.net/v1/jobs/imagine";
-
         if(!request.discord){
             request.discord = this.options.getDefaultDiscordToken();
         }
@@ -78,11 +87,24 @@ export class MidjourneyApiImpl implements MidjourneyApi {
             request.channel = this.options.getDefaultDiscordChannel();
         }
 
-        let httpRes = await fetch(url, {
+        const url = "https://api.useapi.net/v1/jobs/imagine";
+        const fetchAsync = fetch(url, {
             method: "POST",
             headers: this.getDefaultHeader(),
             body: JSON.stringify(instanceToPlain(request))
         });
+
+        let httpRes:Response;
+        if(this.semaphore){
+            const [semNumber, releaser] = await this.semaphore.acquire();
+            try {
+                httpRes = await fetchAsync;
+            } finally {
+                releaser();
+            }
+        } else {
+            httpRes = await fetchAsync;
+        }
         
         const json = await httpRes.json();
         let response = plainToInstance(JobImagineResponse, json) as unknown as JobImagineResponse;
@@ -96,12 +118,23 @@ export class MidjourneyApiImpl implements MidjourneyApi {
         }
 
         const url = "https://api.useapi.net/v1/jobs/button";
-
-        let httpRes = await fetch(url, {
+        const fetchAsync = fetch(url, {
             method: "POST",
             headers: this.getDefaultHeader(),
             body: JSON.stringify(instanceToPlain(request))
         });
+
+        let httpRes:Response;
+        if(this.semaphore){
+            const [semNumber, releaser] = await this.semaphore.acquire();
+            try {
+                httpRes = await fetchAsync;
+            } finally {
+                releaser();
+            }
+        } else {
+            httpRes = await fetchAsync;
+        }
         
         const json = await httpRes.json();
         let response = plainToInstance(JobButtonResponse, json) as unknown as JobButtonResponse;
