@@ -1,6 +1,10 @@
 import { FieldSet, Record, Table} from "airtable";
 import { QuoteDto } from "../datatypes/QuoteDto";
 import { AirtableSchemaOptions } from "../datatypes/Common";
+import { createLogger } from "../lib/logger";
+import path from "path";
+
+const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 export interface QuoteRepo {
     get_ready_one():Promise<QuoteDto | undefined>;
@@ -68,7 +72,7 @@ export class QuoteRepoImpl implements QuoteRepo {
                 return this.parseQuoteDto(records[0]);                
             } 
         } catch(err){
-            console.error(err);
+            logger.error(err);
         }
         return undefined;
     }

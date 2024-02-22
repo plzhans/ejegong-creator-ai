@@ -1,10 +1,13 @@
 import dotenv from "dotenv";
 import yaml from "js-yaml";
 import * as fs from 'fs';
-import { join } from "path";
+import path from "path";
 import Airtable from "airtable";
+import { createLogger } from "./lib/logger";
 
 dotenv.config();
+
+const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 interface ConfigMap{
   name: string,
@@ -131,7 +134,7 @@ function flattenYamlObject(yamlObject: any, parentKey = ''): Map<string, string>
 
 
 function getMapByYaml():Map<string,string>{
-  const filePath = join('./config/', "default.yaml");
+  const filePath = path.join('./config/', "default.yaml");
   try {
     const map = new Map<string,string>();
 
@@ -144,11 +147,11 @@ function getMapByYaml():Map<string,string>{
         map.set(key, value);
       });
     } else {
-      console.debug(`Notfound config file. path=${filePath}`);
+      logger.debug(`Notfound config file. path=${filePath}`);
     }
     return map;
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     throw new Error(`yaml load fail. path=${filePath}`);
   }
 }
@@ -173,7 +176,7 @@ async function getAirtableConfigMap(token:string, baseName:string, tableName:str
       });
       next();
   }).catch(err => {
-      console.error(err);
+    logger.error(err);
       map.clear();
   })
   return map;

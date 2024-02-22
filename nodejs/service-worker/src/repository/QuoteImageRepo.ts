@@ -1,6 +1,10 @@
 import Airtable, {FieldSet, Record, Table} from "airtable";
 import { QutoeImageDto } from "../datatypes/QuoteImageDto";
 import { AirtableSchemaOptions, UrlAttachment } from "../datatypes/Common";
+import { createLogger } from "../lib/logger";
+import path from "path";
+
+const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 export interface QuoteImageRepo {
     get(recordId: string): Promise<QutoeImageDto|undefined>;
@@ -163,7 +167,7 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
             });
             next();
         }).catch(err => {
-            console.error(err);
+            logger.error(err);
             list.length = 0;
         })
         return list;

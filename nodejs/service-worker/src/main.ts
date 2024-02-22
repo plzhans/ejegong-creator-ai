@@ -1,24 +1,24 @@
 import { getReadOne, makeQuoteImage } from "./MakeProcess";
 import { initConfig } from "./config";
 import { sleep } from "./lib/taskLib";
+import { createLogger } from "./lib/logger";
+import path from "path";
+
+const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 main().then(()=>"exit.").catch(err=>{
-    console.error(err);
+    logger.error(err);
 });
 
 async function main(): Promise<void> {
-
-    const config = await initConfig();
-    console.debug("--- initConfig ---");
-    console.debug(config);
-    console.debug("---");
+    await initConfig();
     
     if(process.argv.includes("--debug-one")){
         const quote = await getReadOne();
         if(quote){
             await makeQuoteImage(quote);
         } else {
-            console.info("Notfound queue data.")
+            logger.info("Notfound queue data.")
         }
     } else {
         while(true){
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
                     await sleep(1000);
                 }
             }
-            console.debug("sleep... 60s");
+            logger.debug("sleep... 60s");
             await sleep(1000 * 60);
         }
     }
