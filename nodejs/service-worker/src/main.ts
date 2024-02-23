@@ -3,6 +3,9 @@ import { initConfig } from "./config";
 import { sleep } from "./lib/taskLib";
 import { createLogger } from "./lib/logger";
 import path from "path";
+import telegram from "./lib/telegram";
+import os from 'os';
+
 
 const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
@@ -14,6 +17,7 @@ main().then(()=>"exit.").catch(err=>{
 
 async function main(): Promise<void> {
     await initConfig();
+    await onStart();
     
     if(process.argv.includes("--debug-one")){
         logger.info(`process start. --debug-one`);
@@ -50,5 +54,48 @@ async function main(): Promise<void> {
             logger.debug("sleep... 60s");
             await sleep(1000 * 60);
         }
+    }
+}
+
+let exiting = false;
+let startTelegramMessageId:number|undefined;
+
+async function onStart(): Promise<void> {
+
+    process.on('beforeExit', async (code) => {
+        if(exiting){
+            return;
+        }
+        exiting = true;
+        onExit(code);
+    });
+    
+    if (process.env.NODE_ENV === 'production'){
+        const message = [
+            `[SERVICE:service-woker] start.`,
+            //`>> version : ${process.version}`,
+            `>> hostname: ${os.hostname}`
+        ].join('\n');
+
+        const result = await telegram.sendMessage(message);
+        if(result){
+            startTelegramMessageId = result.message_id;
+        }
+    }
+}
+
+async function onExit(code:number): Promise<void> {
+    if (process.env.NODE_ENV === 'production'){
+        const message = [
+            `[SERVICE:service-woker] stop.`,
+            //`>> version : ${process.version}`,
+            `>> hostname: ${os.hostname}`,
+            "",
+            `exit_code : ${code}`,
+        ].join('\n');
+
+        await telegram.sendMessage(message, {
+            reply_to_message_id: startTelegramMessageId
+        });
     }
 }

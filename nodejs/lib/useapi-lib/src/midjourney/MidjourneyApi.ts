@@ -1,8 +1,10 @@
 import {instanceToPlain, plainToInstance} from "class-transformer";
 import {JobImagineRequest, GetJobResponse, JobImagineResponse, JobButtonRequest, JobButtonResponse } from "./MidjourneyTypes";
 import {Semaphore} from "async-mutex"
+import * as Discord from "discord.js"
 
 export interface MidjourneyApi {
+    createDiscordClinet(options:Discord.ClientOptions|undefined):Promise<Discord.Client>
     getJob(jobid:string):Promise<GetJobResponse>;
     // getJobList():Promise<any>;
     // getAccount():Promise<any>;
@@ -53,6 +55,22 @@ export class MidjourneyApiImpl implements MidjourneyApi {
         if(semaphoreCap > 0){
             this.semaphore = new Semaphore(semaphoreCap);
         }
+    }
+
+    async createDiscordClinet(options:Discord.ClientOptions|undefined):Promise<Discord.Client>{
+        if (!options){
+            options = {
+                intents: [
+                    Discord.GatewayIntentBits.Guilds,
+                    Discord.GatewayIntentBits.GuildMessages,
+                    Discord.GatewayIntentBits.MessageContent,
+                ]
+            }
+        }
+        const client = new Discord.Client(options);
+        const loginResult = await client.login(this.options.getDefaultDiscordToken());
+        console.debug(`loginResult : ${loginResult}`);
+        return client;
     }
 
     getDefaultHeader():any {

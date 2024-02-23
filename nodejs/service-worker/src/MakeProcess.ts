@@ -1,7 +1,7 @@
 import { QuoteDto } from "./datatypes/QuoteDto";
 import { QutoeImageDto } from './datatypes/QuoteImageDto';
 import { isEmpty } from 'lodash';
-import { midjourneyApi } from './lib/lib';
+import { midjourneyApi } from './lib/midjourney';
 import { JobButtonRequest, JobImagineRequest } from 'useapi-lib';
 import { UrlAttachment } from './datatypes/Common';
 import { ConfigRepo, QuoteImageRepo, QuoteRepo } from "./repository/repo";

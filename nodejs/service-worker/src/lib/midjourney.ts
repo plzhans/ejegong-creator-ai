@@ -19,3 +19,4 @@ export function midjourneyApi():MidjourneyApi {
     }
     return _midjourneyApi;
 }
+

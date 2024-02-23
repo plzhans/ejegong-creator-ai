@@ -235,6 +235,12 @@ export async function initConfig():Promise<AppConfig>{
         discord_server: configuration.getStringOrThrow("useapi.midjourney.discord_server"),
         discord_channel: configuration.getStringOrThrow("useapi.midjourney.discord_channel"),
       }
+    },
+    telegram: {
+      bot: {
+        token : configuration.getStringOrThrow("telegram.bot.token"),
+        default_chat_id : configuration.getStringOrThrow("telegram.bot.default_chat_id"),
+      }
     }
   };
   _appConfig = config;
@@ -244,10 +250,12 @@ export async function initConfig():Promise<AppConfig>{
   logger.info(`airtable.tables.quote_image: ${config.airtable.tables.quote_image}`);
   logger.info(`useapi.midjourney.discord_server: ${config.useapi.midjourney.discord_server}`);
   logger.info(`useapi.midjourney.discord_channel: ${config.useapi.midjourney.discord_channel}`);
+  logger.info(`telegram.bot.default_chat_id: ${config.telegram.bot.default_chat_id}`);
   logger.info(`google.service_account.project_id: ${config.google.service_account.project_id}`);
   logger.info(`google.service_account.client_id: ${config.google.service_account.client_id}`);
   logger.info(`google.service_account.client_email: ${config.google.service_account.client_email}`);
   logger.info(`google.service_account.private_key_id: ${config.google.service_account.private_key_id}`);
+  
 
   return config;
 }
@@ -284,6 +292,12 @@ export interface AppConfig{
       discord_token: string,
       discord_server: string,
       discord_channel: string,
+    }
+  }
+  telegram: {
+    bot: {
+      token: string,
+      default_chat_id: string,
     }
   }
 }
