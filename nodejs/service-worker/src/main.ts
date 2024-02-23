@@ -72,7 +72,7 @@ async function onStart(): Promise<void> {
     
     if (process.env.NODE_ENV === 'production'){
         const message = [
-            `[SERVICE:service-woker] start.`,
+            `[SYSTEM][service-woker] start.`,
             //`>> version : ${process.version}`,
             `>> hostname: ${os.hostname}`
         ].join('\n');
@@ -87,7 +87,7 @@ async function onStart(): Promise<void> {
 async function onExit(code:number): Promise<void> {
     if (process.env.NODE_ENV === 'production'){
         const message = [
-            `[SERVICE:service-woker] stop.`,
+            `[SYSTEM][service-woker] stop.`,
             //`>> version : ${process.version}`,
             `>> hostname: ${os.hostname}`,
             "",
