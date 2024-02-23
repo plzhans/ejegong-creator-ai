@@ -1,4 +1,4 @@
-import { getReadOne, makeQuoteImage } from "./MakeProcess";
+import { getReadOne, isProcessEnabled, makeQuoteImage } from "./MakeProcess";
 import { initConfig } from "./config";
 import { sleep } from "./lib/taskLib";
 import { createLogger } from "./lib/logger";
@@ -17,25 +17,34 @@ async function main(): Promise<void> {
     
     if(process.argv.includes("--debug-one")){
         logger.info(`process start. --debug-one`);
-        const quote = await getReadOne();
-        if(quote){
-            await makeQuoteImage(quote);
-        } else {
-            logger.info("Notfound queue data.")
-        }
-    } else {
-        logger.info(`process start.`);
-        while(true){
+        if(await isProcessEnabled()){
             const quote = await getReadOne();
             if(quote){
                 await makeQuoteImage(quote);
-                while(true){
-                    const quote = await getReadOne();
-                    if(!quote){
-                        break;
-                    }
+            } else {
+                logger.info("Notfound queue data.");
+            }
+        } else {
+            logger.info("process disabled.");
+        }
+        
+    } else {
+        logger.info(`process start.`);
+        while(true){
+            if(await isProcessEnabled()){
+                const quote = await getReadOne();
+                if(quote){
                     await makeQuoteImage(quote);
-                    await sleep(1000);
+                    while(true){
+                        if(await isProcessEnabled()){
+                            const quote = await getReadOne();
+                            if(!quote){
+                                break;
+                            }
+                            await makeQuoteImage(quote);
+                            await sleep(1000);
+                        }
+                    }
                 }
             }
             logger.debug("sleep... 60s");

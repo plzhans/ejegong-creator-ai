@@ -1,13 +1,10 @@
 name: service-worker
-
 on:
   push:
-    branches:
-      - develop
-
+    #branches: ["production"]
+    branches: ["develop"]
 env:
   DOCKER_REGISTRY: ghcr.io
-  
 jobs:
   node-build:
     runs-on: ubuntu-latest

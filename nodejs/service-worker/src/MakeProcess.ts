@@ -4,13 +4,19 @@ import { isEmpty } from 'lodash';
 import { midjourneyApi } from './lib/lib';
 import { JobButtonRequest, JobImagineRequest } from 'useapi-lib';
 import { UrlAttachment } from './datatypes/Common';
-import { QuoteImageRepo, QuoteRepo } from "./repository/repo";
+import { ConfigRepo, QuoteImageRepo, QuoteRepo } from "./repository/repo";
 import { createLogger } from "./lib/logger";
 import path from "path";
 
 const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
+export async function isProcessEnabled():Promise<boolean>{
+    let enabeld = await ConfigRepo().getBoolean("system.service_worker.enable");
+    return enabeld || false;
+}
+
 export async function getReadOne(): Promise<QuoteDto | undefined>{
+    
     let quote = await QuoteRepo().get_ready_one();
     return quote;
 }

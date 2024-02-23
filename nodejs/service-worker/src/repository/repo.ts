@@ -1,7 +1,18 @@
 import { getAppConfig } from "../config";
 import { AirtableSchemaOptions } from "../datatypes/Common";
+import { ConfigRepo, ConfigRepoImpl } from "./ConfigRepo";
 import { QuoteImageRepo, QuoteImageRepoImpl } from "./QuoteImageRepo";
 import { QuoteRepo, QuoteRepoImpl } from "./QuoteRepo";
+
+let _ConfigRepo:ConfigRepo|undefined = undefined;
+export function ConfigRepo():ConfigRepo {
+    if(!_ConfigRepo){
+        const appConfig = getAppConfig();
+        const options = new AirtableSchemaOptions(appConfig.airtable.token, appConfig.airtable.tables.config);
+        _ConfigRepo = new ConfigRepoImpl(options);
+    }
+    return _ConfigRepo;
+}
 
 let _QuoteRepo:QuoteRepo|undefined = undefined;
 export function QuoteRepo():QuoteRepo {
