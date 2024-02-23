@@ -31,11 +31,12 @@ export class ConfigBuilder {
     this.maps.push({name:name, map:finalMap})
   }
 
-  addEnv(prefix:string="AppSettings__"){
+  addEnv(prefix:string="config__"){
+    const checkPrefix = prefix.toLocaleLowerCase();
     const map = new Map<string,string>();
     for (const envKey in process.env) {
-      if (envKey.startsWith(prefix)) {
-        const finalKey = envKey.slice(prefix.length).replace(/__/g, ".");
+      if (envKey.toLocaleLowerCase().startsWith(checkPrefix.toLocaleLowerCase())) {
+        const finalKey = envKey.slice(checkPrefix.length).replace(/__/g, ".");
         const value = process.env[envKey];
         if(value){
           map.set(finalKey.toLowerCase(), value);
@@ -195,13 +196,17 @@ async function getConfiguration():Promise<Configuration>{
   const airtableApiKey = defaultConfig.getStringOrThrow("airtable.token");
   const airtableTableBase = defaultConfig.getStringOrThrow("airtable.tables.config").split('/');
   if(airtableTableBase.length < 2){
+    logger.error("Invalid config value. name=airtable.tables.config");
     throw new Error("Invalid config value. name=airtable.tables.config");
   }
   const airtableBaseId = airtableTableBase[0];
   const airtableTableId = airtableTableBase[1];
 
   const airtableConfigMap = await getAirtableConfigMap(airtableApiKey, airtableBaseId, airtableTableId);
-
+  if (airtableConfigMap.size < 1) {
+    logger.error("Airtable config sync fail.");
+    throw new Error("Airtable config sync fail.");
+  }
   const builder = new ConfigBuilder();
   builder.addAirtable(`airtable:${airtableBaseId}:${airtableTableId}`, airtableConfigMap);
   builder.add("yaml", map);
@@ -233,6 +238,17 @@ export async function initConfig():Promise<AppConfig>{
     }
   };
   _appConfig = config;
+
+  logger.info(`airtable.tables.config: ${config.airtable.tables.config}`);
+  logger.info(`airtable.tables.quote: ${config.airtable.tables.quote}`);
+  logger.info(`airtable.tables.quote_image: ${config.airtable.tables.quote_image}`);
+  logger.info(`useapi.midjourney.discord_server: ${config.useapi.midjourney.discord_server}`);
+  logger.info(`useapi.midjourney.discord_channel: ${config.useapi.midjourney.discord_channel}`);
+  logger.info(`google.service_account.project_id: ${config.google.service_account.project_id}`);
+  logger.info(`google.service_account.client_id: ${config.google.service_account.client_id}`);
+  logger.info(`google.service_account.client_email: ${config.google.service_account.client_email}`);
+  logger.info(`google.service_account.private_key_id: ${config.google.service_account.private_key_id}`);
+
   return config;
 }
 
@@ -280,29 +296,3 @@ export function getAppConfig():AppConfig{
   }
   return _appConfig;
 }
-// export class ConfigFactory {
-  
-//   private appConfig:AppConfig|undefined;
-  
-//   public getConfig():AppConfig{
-//     if(!this.appConfig){
-//       throw new Error("appConfig is undefined.");
-//     }
-//     return this.appConfig;
-//   }
-
-//   public getAirtable(): Airtable{
-//     const config = this.getConfig();
-//     const airtable = new Airtable({
-//         apiKey: config.airtable.token,
-//     });
-//     return airtable;
-//   }
-
-// }
-
-// const configFactory = new ConfigFactory();
-
-// export function getConfigFacotry():ConfigFactory {
-//   return configFactory;
-// }

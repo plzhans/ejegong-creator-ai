@@ -6,6 +6,8 @@ import path from "path";
 
 const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
+logger.info(`start. NODE_ENV=${process.env.NODE_ENV}`)
+
 main().then(()=>"exit.").catch(err=>{
     logger.error(err);
 });
@@ -14,6 +16,7 @@ async function main(): Promise<void> {
     await initConfig();
     
     if(process.argv.includes("--debug-one")){
+        logger.info(`process start. --debug-one`);
         const quote = await getReadOne();
         if(quote){
             await makeQuoteImage(quote);
@@ -21,6 +24,7 @@ async function main(): Promise<void> {
             logger.info("Notfound queue data.")
         }
     } else {
+        logger.info(`process start.`);
         while(true){
             const quote = await getReadOne();
             if(quote){

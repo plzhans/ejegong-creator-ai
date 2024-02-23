@@ -6,9 +6,9 @@
   "scripts": {
     "test": "node_modules/.bin/jest",
     "clean": "rm -rf dist",
-    "build-useapi-lib": "cd ../lib/useapi-lib && rm -rf dist && npm install && npm run build && npm link",
-    "build": "rm -rf dist && npm link useapi-lib && tsc -p .",
-    "build-full": "npm run build-useapi-lib && npm run build-tsc",
+    "build-useapi-lib": "npm --prefix ../lib/useapi-lib install && npm --prefix ../lib/useapi-lib run build",
+    "build": "rm -rf dist && tsc -p .",
+    "build-full": "npm run build-useapi-lib && npm run build",
     "dev": "nodemon --watch \"src/**/*.ts\" --exec \"ts-node\" src/main.ts",
     "start": "node dist/main.js"
   },
@@ -38,6 +38,7 @@
     "lodash": "^4.17.21",
     "node-cron": "^3.0.3",
     "reflect-metadata": "^0.2.1",
+    "useapi-lib": "file:../lib/useapi-lib",
     "winston": "^3.11.0"
   }
 }
