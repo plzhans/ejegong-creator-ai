@@ -7,8 +7,12 @@ import { UrlAttachment } from './datatypes/Common';
 import { ConfigRepo, QuoteImageRepo, QuoteRepo } from "./repository/repo";
 import { createLogger } from "./lib/logger";
 import path from "path";
+import telegramLib from "./lib/telegramLib";
+import dateLib from "./lib/dateLib";
+import { EditMessageTextOptions, SendMessageOptions } from "node-telegram-bot-api";
+import { getAppConfig } from "./config";
 
-const logger = createLogger(path.basename(__filename, path.extname(__filename)));
+const moduleLogger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 export async function isProcessEnabled():Promise<boolean>{
     let enabeld = await ConfigRepo().getBoolean("system.service_worker.enable");
@@ -22,24 +26,26 @@ export async function getReadOne(): Promise<QuoteDto | undefined>{
 }
 
 export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
+    const logger = moduleLogger.child(`makeQuoteImage('${quote.recordId}')`);
 
+    const config = getAppConfig();
     if(!quote.contentsEng || !quote.contentsKor) {
-        logger.error(`record[${quote.recordId}]: empty contents`);
-        await quoteImageProcessError(quote);
+        logger.error(`Empty contents`);
+        await processError(quote);
         return;
     }
 
     let arrayContentsEng = quote.contentsEng.split('\n').filter(Boolean);
     if (arrayContentsEng.length != quote.contentCount) {
-        logger.error(`record[${quote.recordId}]: invalid contents_eng count. length=${arrayContentsEng.length}, count=${quote.contentCount}`);
-        await quoteImageProcessError(quote);
+        logger.error(`Invalid contents_eng count. length=${arrayContentsEng.length}, count=${quote.contentCount}`);
+        await processError(quote);
         return;
     }
 
     let arrayContentsKor = quote.contentsKor.split('\n').filter(Boolean);
     if (arrayContentsKor.length != quote.contentCount) {
-        logger.error(`record[${quote.recordId}]: invalid contents_kor. length=${arrayContentsKor.length}, count=${quote.contentCount}`);
-        await quoteImageProcessError(quote);
+        logger.error(`Invalid contents_kor. length=${arrayContentsKor.length}, count=${quote.contentCount}`);
+        await processError(quote);
         return;
     }
 
@@ -54,18 +60,18 @@ export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
         const quotesIndex = loopIndex + 1;
         let contentsEngSplit = arrayContentsEng[loopIndex].split('|');
         if(contentsEngSplit.length < 2) {
-            logger.error(`record[${quote.recordId}][${loopIndex}]: content_eng invalid split.`);
+            logger.error(`QuoteImage[${loopIndex}]: content_eng invalid split.`);
             break;
         }
         let contentsKorSplit = arrayContentsKor[loopIndex].split('|');
         if(contentsKorSplit.length < 2) {
-            logger.error(`record[${quote.recordId}][${loopIndex}]: content_kor invalid split.`);
+            logger.error(`QuoteImage[${loopIndex}]: content_kor invalid split.`);
             break;
         }
 
         let contents = contentsEngSplit[0];
         if(isEmpty(contents)){
-            logger.error(`record[${quote.recordId}][${loopIndex}]: empty content_eng.`);
+            logger.error(`QuoteImage[${loopIndex}]: empty content_eng.`);
             break;
         }
 
@@ -76,7 +82,7 @@ export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
             if(quoteImage.quotesTextEng !== contents){
                 const removeResult = await QuoteImageRepo().remove(quoteImage.recordId);
                 if(!removeResult){
-                    logger.error(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo remove error. record_id=${quoteImage.recordId}`);
+                    logger.error(`QuoteImage[${loopIndex}]: QuoteImageRepo remove error. record_id=${quoteImage.recordId}`);
                     break;
                 }
                 quoteImage = undefined;
@@ -96,17 +102,16 @@ export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
             };
             quoteImage = await QuoteImageRepo().insert(newQuoteImage);
             if(!quoteImage){
-                logger.error(`record[${quote.recordId}][${loopIndex}]: QuoteImageRepo insert error.`);
+                logger.error(`QuoteImage[${loopIndex}]: QuoteImageRepo insert error.`);
                 break;
             }
         }
-
         imageMap.set(key, quoteImage);
     }
 
     if(imageMap.size != quote.contentCount){
-        logger.error(`record[${quote.recordId}]: invalid map size. length=${imageMap.size}, count=${quote.contentCount}`);
-        await quoteImageProcessError(quote);
+        logger.error(`Invalid map size. length=${imageMap.size}, count=${quote.contentCount}`);
+        await processError(quote);
         return;
     }
 
@@ -119,7 +124,7 @@ export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
     const finalImages = await Promise.all(promises);
     for(let loopIndex=0; loopIndex<quote.contentCount; loopIndex++){
         if(!finalImages[loopIndex].url){
-            logger.error(`record[${quote.recordId}][${loopIndex+1}]: invalid processOne url.`);
+            logger.error(`QuoteImage[${loopIndex+1}]: invalid processOne url.`);
             return;
         }
     }
@@ -130,11 +135,57 @@ export async function makeQuoteImage(quote:QuoteDto): Promise<void>{
         imageStatus: "completed"
     });
     if(!updateResult){
-        logger.error(`record[${quote.recordId}]: QuoteRepo update error.`);
+        logger.error(`QuoteRepo update error.`);
+    }
+
+    const message = [
+        "[Worker] 명언 생성 자동화",
+        ">> 상태 : 영상 생성 요청 (Creatomate)",
+        `>> 주제 : ${quote.subject}, 2.${quote.contentCount}개`,
+        `>> record_id : ${quote.recordId}`,
+        `>> date : ${dateLib.nowStr()}`,
+        "",
+        quote.contentsKor,
+        // "",
+        // ...finalImages.map((item,index) => `${index+1}: ${item.url || ""}`)
+    ].join("\n");
+
+    if (quote.telegram_message_id){
+        const messageOptions:EditMessageTextOptions = {
+            reply_markup: {
+                inline_keyboard: [[{
+                    text: "Retry",
+                    url: `${config.ejecreator.api.url}?step=image-confirm-yes&record_id=${quote.recordId}`
+                }]]
+            }
+        };
+        await telegramLib.editMessageText(quote.telegram_message_id, message, messageOptions);
+    } else {
+        const messageOptions:SendMessageOptions = {
+            reply_markup: {
+                inline_keyboard: [[{
+                    text: "Retry",
+                    url: `${config.ejecreator.api.url}?step=image-confirm-yes`
+                }]]
+            }
+        };
+        telegramLib.sendMessage(message, messageOptions).then(sendResult=>{
+            QuoteRepo().update(quote.recordId, {
+                recordId: quote.recordId,
+                telegram_message_id: sendResult?.message_id
+            }).then(result=>{
+                logger.info(`Final new message ok. message_id=${sendResult?.message_id}`);
+            }).catch(err=>{
+                logger.error(`Final quote repo update fail. ${err}`);
+            });
+        }).catch(err=>{
+            logger.error(`Final new message send fail. ${err}`);
+        });
     }
 }
 
 async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlAttachment>{
+    const logger = moduleLogger.child(`processOne('${quote.recordId}')`);
     if(!quoteImage.quotesTextEng){
         return {};
     }
@@ -160,15 +211,15 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                         quoteImage.midjourneyJobId = imagineRes.jobid;
                         targetJobId = imagineRes.jobid;
                     } else {
-                        logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]:Imagine QuoteImageRepo update fail. record_id=${quoteImage.recordId}`);
+                        logger.error(`QuoteImage[${quoteImage.quotesIndex}]:Imagine QuoteImageRepo update fail. record_id=${quoteImage.recordId}`);
                     }
                     await new Promise(resolve => setTimeout(resolve, 1000 * 20));
                 } else if( imagineRes.code == 429 ) {
                     // Too Many Requests
                     await new Promise(resolve => setTimeout(resolve, 1000 * 30));
                 } else {
-                    logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: MidjourneyApi.jobImagine fail. code=${imagineRes.code}, error=${imagineRes.error}`);
-                    await quoteImageProcessError(quote);
+                    logger.error(`QuoteImage[${quoteImage.quotesIndex}]: MidjourneyApi.jobImagine fail. code=${imagineRes.code}, error=${imagineRes.error}`);
+                    await processError(quote);
                     return {};
                 }   
             } else {
@@ -176,7 +227,7 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                 if(jobRes.isOk()){
                     switch(jobRes.status) {
                         case "completed":
-                            logger.debug(`record[${quote.recordId}][${quoteImage.quotesIndex}]: Midjourne job ${jobRes.status}. jobId=${jobRes.jobid}`);
+                            logger.debug(`QuoteImage[${quoteImage.quotesIndex}]: Midjourne job ${jobRes.status}. jobId=${jobRes.jobid}`);
 
                             switch(jobRes.verb){
                                 case "imagine":
@@ -191,17 +242,17 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                                         if(updateResult){
                                             quoteImage.midjourneyJobId = buttonRes.jobid;
                                             targetJobId = buttonRes.jobid;
-                                            logger.debug(`record[${quote.recordId}][${quoteImage.quotesIndex}]: Midjourne ${jobRes.verb} ok.`);
+                                            logger.debug(`QuoteImage[${quoteImage.quotesIndex}]: Midjourne ${jobRes.verb} ok.`);
                                         } else {
-                                            logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]:Imagine QuoteImageRepo update fail. record_id=${quoteImage.recordId}`);
+                                            logger.error(`QuoteImage[${quoteImage.quotesIndex}]:Imagine QuoteImageRepo update fail. record_id=${quoteImage.recordId}`);
                                         }
                                         await new Promise(resolve => setTimeout(resolve, 1000 * 10));
                                     } else if( buttonRes.code == 429 ) {
                                         // Too Many Requests
                                         await new Promise(resolve => setTimeout(resolve, 1000 * 30));
                                     } else {
-                                        logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: MidjourneyApi.jobButton fail. jobId=${jobRes.jobid}, code=${buttonRes.code}, error=${buttonRes.error}`);
-                                        await quoteImageProcessError(quote);
+                                        logger.error(`QuoteImage[${quoteImage.quotesIndex}]: MidjourneyApi.jobButton fail. jobId=${jobRes.jobid}, code=${buttonRes.code}, error=${buttonRes.error}`);
+                                        await processError(quote);
                                         return {};
                                     }
                                     break;
@@ -212,7 +263,7 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                                         const imageHeight = jobRes.attachments[0].height;
                                         const imageSize = jobRes.attachments[0].size;
 
-                                        logger.debug(`record[${quote.recordId}][${quoteImage.quotesIndex}]: Midjourne ${jobRes.verb} ok. url=${jobRes.attachments[0].url}`);
+                                        logger.debug(`QuoteImage[${quoteImage.quotesIndex}]: Midjourne ${jobRes.verb} ok. url=${jobRes.attachments[0].url}`);
 
                                         const quoteUpdated = await QuoteImageRepo().update(quoteImage.recordId, {
                                             recordId: quoteImage.recordId,
@@ -229,15 +280,15 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                                         if(quoteUpdated){
                                             whileFlag = false;
                                             finalUrl = quoteUpdated.images?.[0].url;
-                                            logger.debug(`record[${quote.recordId}][${quoteImage.quotesIndex}]: QuoteImageRepo update ok`);
+                                            logger.debug(`QuoteImage[${quoteImage.quotesIndex}]: QuoteImageRepo update ok`);
                                         } else {
-                                            logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: QuoteImageRepo update error.`);
-                                            await quoteImageProcessError(quote);
+                                            logger.error(`QuoteImage[${quoteImage.quotesIndex}]: QuoteImageRepo update error.`);
+                                            await processError(quote);
                                             return {};
                                         }
                                     } else {
-                                        logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: Midjourney attachments error. jobId=${targetJobId}`);
-                                        await quoteImageProcessError(quote);
+                                        logger.error(`QuoteImage[${quoteImage.quotesIndex}]: Midjourney attachments error. jobId=${targetJobId}`);
+                                        await processError(quote);
                                         return {};
                                     }
                                     break;
@@ -257,13 +308,13 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
                                 status: `error:${jobRes.status}`,
                                 midjourneyJobId: jobRes.jobid
                             });
-                            logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, status=${jobRes.status}`);
-                            await quoteImageProcessError(quote);
+                            logger.error(`QuoteImage[${quoteImage.quotesIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, status=${jobRes.status}`);
+                            await processError(quote);
                             return {};
                     }
                 } else {
-                    logger.error(`record[${quote.recordId}][${quoteImage.quotesIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, code=${jobRes.code}, error=${jobRes.error}`);
-                    await quoteImageProcessError(quote);
+                    logger.error(`QuoteImage[${quoteImage.quotesIndex}]: MidjourneyApi.getJob fail. jobId=${targetJobId}, code=${jobRes.code}, error=${jobRes.error}`);
+                    await processError(quote);
                     return {};
                 }
             }
@@ -271,7 +322,7 @@ async function processOne(quote:QuoteDto, quoteImage:QutoeImageDto):Promise<UrlA
         } // while
 
         if(!finalUrl){
-            await quoteImageProcessError(quote);
+            await processError(quote);
             return {}
         }
 
@@ -284,7 +335,8 @@ function createImagePrompt(content:string){
     return `create an image that goes well with the following sentence. "${finalContent}" —ar 3:4 —q .25`;
 }
 
-async function quoteImageProcessError(quote:QuoteDto): Promise<void> {
+async function processError(quote:QuoteDto): Promise<void> {
+    const logger = moduleLogger.child(`processError('${quote.recordId}')`);
     let update:QuoteDto = {
         recordId: quote.recordId,
         imageStatus: "worker_error"
@@ -292,6 +344,6 @@ async function quoteImageProcessError(quote:QuoteDto): Promise<void> {
 
     const updateResult = await QuoteRepo().update(quote.recordId, update);
     if(!updateResult){
-        logger.error(`record[${quote.recordId}]: QuoteRepo update error.`);
+        logger.error(`QuoteRepo update error.`);
     }
 }

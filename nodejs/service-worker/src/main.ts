@@ -3,7 +3,7 @@ import { initConfig } from "./config";
 import { sleep } from "./lib/taskLib";
 import { createLogger } from "./lib/logger";
 import path from "path";
-import telegram from "./lib/telegram";
+import telegramLib from "./lib/telegramLib";
 import os from 'os';
 
 
@@ -77,7 +77,7 @@ async function onStart(): Promise<void> {
             `>> hostname: ${os.hostname}`
         ].join('\n');
 
-        const result = await telegram.sendMessage(message);
+        const result = await telegramLib.sendMessage(message);
         if(result){
             startTelegramMessageId = result.message_id;
         }
@@ -94,7 +94,7 @@ async function onExit(code:number): Promise<void> {
             `exit_code : ${code}`,
         ].join('\n');
 
-        await telegram.sendMessage(message, {
+        await telegramLib.sendMessage(message, {
             reply_to_message_id: startTelegramMessageId
         });
     }

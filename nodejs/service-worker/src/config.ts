@@ -217,6 +217,12 @@ async function getConfiguration():Promise<Configuration>{
 export async function initConfig():Promise<AppConfig>{
   const configuration = await getConfiguration();
   const config:AppConfig = {
+    ejecreator: {
+      api: {
+        url: configuration.getStringOrThrow("ejecreator.api.url"),
+        token: configuration.getStringOrThrow("ejecreator.api.token"),
+      }
+    },
     google: {
       service_account: JSON.parse(configuration.getStringOrThrow("google.service_account"))
     },
@@ -245,6 +251,7 @@ export async function initConfig():Promise<AppConfig>{
   };
   _appConfig = config;
 
+  logger.info(`ejecreator.api.url: ${config.ejecreator.api.url}`);
   logger.info(`airtable.tables.config: ${config.airtable.tables.config}`);
   logger.info(`airtable.tables.quote: ${config.airtable.tables.quote}`);
   logger.info(`airtable.tables.quote_image: ${config.airtable.tables.quote_image}`);
@@ -275,6 +282,12 @@ export interface GoogleServiceAccount {
 }
 
 export interface AppConfig{
+  ejecreator: {
+    api: {
+      url: string,
+      token: string
+    }
+  },
   google: {
     service_account: GoogleServiceAccount,
   },

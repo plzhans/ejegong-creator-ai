@@ -33,7 +33,7 @@ export class QuoteRepoImpl implements QuoteRepo {
                 contentCount: Number(record.get("명언 수")?.toString()) || 0,
                 contentsKor: record.get("내용")?.toString(),
                 contentsEng: record.get("내용_영어")?.toString(),
-                telegram_message_id: record.get("Telegram_message_id")?.toString(),
+                telegram_message_id: Number(record.get("Telegram_message_id")?.toString() || ""),
                 imageStatus: record.get("image_status")?.toString(),
                 //images: record.get("")?.toString(),
             };
@@ -51,6 +51,9 @@ export class QuoteRepoImpl implements QuoteRepo {
         }
         if (input.images) {
             data.images = input.images;
+        }
+        if(input.telegram_message_id){
+            data.Telegram_message_id = input.telegram_message_id?.toString();
         }
 
         let result = await base.update(recordId, data);

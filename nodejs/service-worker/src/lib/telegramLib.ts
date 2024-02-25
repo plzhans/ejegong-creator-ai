@@ -8,8 +8,8 @@ const logger = createLogger(path.basename(__filename, path.extname(__filename)))
 let bot:TelegramBot|undefined = undefined;
 let defaultChatId:string|undefined = undefined;
 
-namespace telegram {
-    export function getTelegramBot():TelegramBot{
+namespace telegramLib {
+    export function getBot():TelegramBot{
         if(!bot){
             const config = getAppConfig();
             bot = new TelegramBot(config.telegram.bot.token, {});
@@ -26,13 +26,28 @@ namespace telegram {
     }
     
     export async function sendMessage(text:string, options?: TelegramBot.SendMessageOptions):Promise<TelegramBot.Message|undefined>{
-        return getTelegramBot().sendMessage(getDefaultChatId(), text, options)
+        return getBot().sendMessage(getDefaultChatId(), text, options)
             .catch((err)=>{
                 logger.error("getTelegramBot().sendMessage(): fail.");
                 logger.error(err);
                 return undefined;
             });
     }
+
+    export async function editMessageText(messageId:number, text:string, options?: TelegramBot.EditMessageTextOptions):Promise<TelegramBot.Message|boolean>{
+        if(!options){
+            options = {}
+        }
+        options.message_id = messageId;
+        if(!options.chat_id){
+            options.chat_id = getDefaultChatId();
+        }
+        return getBot().editMessageText(text, options)
+            .catch((err:Error)=>{
+                logger.error(`getTelegramBot().editMessageText(): fail. ${err}`);
+                return false;
+            });
+    }
 }
 
-export default telegram;
+export default telegramLib;

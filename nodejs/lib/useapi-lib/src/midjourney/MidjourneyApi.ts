@@ -68,8 +68,7 @@ export class MidjourneyApiImpl implements MidjourneyApi {
             }
         }
         const client = new Discord.Client(options);
-        const loginResult = await client.login(this.options.getDefaultDiscordToken());
-        console.debug(`loginResult : ${loginResult}`);
+        const _loginResult = await client.login(this.options.getDefaultDiscordToken());
         return client;
     }
 
