@@ -33,6 +33,9 @@ const options:LoggerOptions = {
 const logger = winston.createLogger(options);
 export default logger;
 
-export function createLogger(name:string):Logger {
-    return logger.child({sub:name});
+export function createLogger(sub:string, options:any|undefined=undefined):Logger {
+    return logger.child({
+        sub:sub,
+        ...options
+    });
 }

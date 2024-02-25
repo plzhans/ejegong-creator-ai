@@ -22,10 +22,10 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
         this.options = options;
     }
 
-    getDefaultBase(): Table<FieldSet>{
+    getDefaultTable(): Table<FieldSet>{
         const airtable = this.options.getAirtable();
-        const base = airtable.base(this.options.baseId).table(this.options.tableId);
-        return base;
+        const table = airtable.base(this.options.baseId).table(this.options.tableId);
+        return table;
     }
     
     parseQuoteImageDto(record: Record<FieldSet>): QutoeImageDto | undefined {
@@ -66,11 +66,11 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
     }
 
     async insert(input: QutoeImageDto): Promise<QutoeImageDto | undefined> {
-        const base = this.getDefaultBase();
+        const table = this.getDefaultTable();
 
         let data:any = {
-            parent_id: input.parentId,
-            quotes_index: input.quotesIndex,
+            quotes_record_id: input.parentId,
+            quotes_index: input.quotesIndex?.toString(),
             quotes_text: input.quotesText,
             author: input.author,
             quotes_text_eng: input.quotesTextEng,
@@ -79,18 +79,21 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
             images: input.images,
             //updated: string,
             midjourney_job_id: input.midjourneyJobId,
-            image_width: input.imageWidth,
-            image_height: input.imageHeight,
-            image_size: input.imageSize
+            image_width: input.imageWidth?.toString(),
+            image_height: input.imageHeight?.toString(),
+            image_size: input.imageSize?.toString(),
         };
 
-        const result = await base.create(input.recordId, data);
-        const dto = this.parseQuoteImageDto(result)
-        return dto;
+        return table.create(data).then(result=>{
+            return this.parseQuoteImageDto(result as unknown as Record<FieldSet>);
+        }).catch(err=>{
+            logger.error(`insert(): error. ${err}`);
+            return undefined;
+        });
     }
 
     async update(recordId:string, input: QutoeImageDto): Promise<QutoeImageDto | undefined> {
-        const base = this.getDefaultBase();
+        const base = this.getDefaultTable();
 
         let data:any = {};
         //data.updated = string;
@@ -137,7 +140,7 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
     }
 
     async remove(recordId: string): Promise<QutoeImageDto|undefined> {
-        const base = this.getDefaultBase();
+        const base = this.getDefaultTable();
 
         const result = await base.destroy(recordId);
         const dto = this.parseQuoteImageDto(result)
@@ -145,14 +148,14 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
     }
 
     async get(recordId: string): Promise<QutoeImageDto|undefined> {
-        const base = this.getDefaultBase();
+        const base = this.getDefaultTable();
 
         let record = await base.find(recordId);
         return this.parseQuoteImageDto(record);
     }
 
     async getListByParentRecordId(recordId: string, maxRecords: number): Promise<Array<QutoeImageDto>> {
-        const base = this.getDefaultBase();
+        const base = this.getDefaultTable();
 
         let list = new Array<QutoeImageDto>();
         await base.select({

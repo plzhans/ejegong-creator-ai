@@ -7,6 +7,7 @@ export interface QuoteDto {
     contentsKor?: string;
     contentsEng?: string;
     telegram_message_id?: number;
+    status?: string;
     imageStatus?: string;
     images?: UrlAttachment[];
 }
