@@ -8,6 +8,7 @@
     "plantuml.previewAutoUpdate": true,
     //"plantuml.lintDiagramNoName":true
     "files.exclude": {
+        "logs": true,
         "nodejs/**/node_modules": true,
         "nodejs/**/dist": true,
         "nodejs/**/out": true,

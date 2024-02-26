@@ -1,8 +1,20 @@
 name: service-worker
+
 on:
   push:
-    #branches: ["production"]
-    branches: ["develop"]
+    branches: [ production ]
+    paths:
+      - 'nodejs/lib/**/*'
+      - 'nodejs/service-worker/**/*'
+  pull_request:
+    branches: [ production ]
+    types:
+      - opened
+      - synchronize
+    paths:
+      - 'nodejs/lib/**/*'
+      - 'nodejs/service-worker/**/*'
+  workflow_dispatch:
 env:
   DOCKER_REGISTRY: ghcr.io
 jobs:
@@ -45,9 +57,7 @@ jobs:
   docker-build-push:
     runs-on: ubuntu-latest
     needs: node-build
-    # permissions:
-    #   #contents: read
-    #   packages: write
+    if: github.event_name == 'push' && github.ref_name == 'production'
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
@@ -74,6 +84,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-service:
+    if: github.event_name == 'push' && github.ref_name == 'production'
     runs-on: [self-hosted, service-real]
     needs: docker-build-push
     env:
