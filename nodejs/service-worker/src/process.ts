@@ -8,7 +8,7 @@ import EjeCreator from "./lib/ejecreator";
 
 export async function isProcessEnabled():Promise<boolean>{
     let enabeld = await ConfigRepo().getBoolean("system.service_worker.enable");
-    return enabeld || false;
+    return enabeld ?? false;
 }
 
 export async function getReadOne(): Promise<QuoteDomain | undefined>{
@@ -22,7 +22,6 @@ export async function getReadOne(): Promise<QuoteDomain | undefined>{
 
 export async function processQuoteMake(domain:QuoteDomain){
     const logger = createLogger("processQuoteMake", {record_id: domain.getId()});
-    const quote = domain.getEntity();
 
     if(!domain.isContents()) {
         await domain.processError("Empty contents");
@@ -30,20 +29,20 @@ export async function processQuoteMake(domain:QuoteDomain){
     }
 
     const arrayContentsEng = domain.getContentsEng();
-    if (arrayContentsEng.length != quote.contentCount) {
+    if (arrayContentsEng.length != domain.getContentCount()) {
         await domain.processError(`Invalid contents_eng count. length=${arrayContentsEng.length}, count=${quote.contentCount}`);
         return;
     }
 
     const arrayContentsKor = domain.getContentsKor();
-    if (arrayContentsKor.length != quote.contentCount) {
+    if (arrayContentsKor.length != domain.getContentCount()) {
         await domain.processError(`Invalid contents_kor. length=${arrayContentsKor.length}, count=${quote.contentCount}`);
         return;
     }
 
     // 기존 이미지 프로세싱 데이터 불러오기
     let imageMap = await domain.getImageMap();
-    for(let loopIndex=0; loopIndex < quote.contentCount; loopIndex++){
+    for(let loopIndex=0; loopIndex < domain.getContentCount(); loopIndex++){
         const quotesIndex = loopIndex + 1;
         let contentsEngSplit = arrayContentsEng[loopIndex].split('|');
         if(contentsEngSplit.length < 2) {
@@ -63,7 +62,7 @@ export async function processQuoteMake(domain:QuoteDomain){
         }
 
         // make.com의 모듈이 array가 1부터 시작하기때문에 quotesIndex는 1로 시작.
-        const key = `${quote.recordId}:${quotesIndex}`;
+        const key = `${domain.getId()}:${quotesIndex}`;
         let quoteImage = imageMap.get(key);
         if(quoteImage){
             if(!quoteImage.equalsQuoteTextEng(contents)){
@@ -78,7 +77,7 @@ export async function processQuoteMake(domain:QuoteDomain){
         if(!quoteImage){
             quoteImage = await QuoteImageDomain.new({
                 recordId: "",
-                parentId: quote.recordId,
+                parentId: domain.getId(),
                 quotesIndex: quotesIndex,
                 quotesText: contentsKorSplit[0],
                 author: contentsKorSplit[1],
@@ -95,7 +94,7 @@ export async function processQuoteMake(domain:QuoteDomain){
         imageMap.set(key, quoteImage);
     }
 
-    if(imageMap.size != quote.contentCount){
+    if(imageMap.size != domain.getContentCount()){
         await domain.processError("Invalid map size. length=${imageMap.size}, count=${quote.contentCount}");
         return;
     }

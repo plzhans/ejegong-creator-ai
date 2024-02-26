@@ -3,7 +3,7 @@ import { QutoeImageDto } from "../datatypes/QuoteImageDto";
 import { QuoteImageRepo } from "../repository/repo";
 import { createLogger } from "../lib/logger";
 import { isEmpty } from "lodash";
-import { GetJobResponse, JobButtonRequest, JobButtonResponse, JobImagineRequest, JobImagineResponse } from "useapi-lib";
+import { GetJobResponse, JobButtonRequest, JobImagineRequest } from "useapi-lib";
 import { midjourneyApi } from "../lib/midjourney";
 
 export class QuoteImageDomain {
@@ -72,7 +72,7 @@ export class QuoteImageDomain {
 
     public async processError(status:string, message:string): Promise<void> {
         await QuoteImageRepo().update(this.entity.recordId, {
-            recordId: "",
+            recordId: this.entity.recordId,
             status: `error:${status}`,
         });
     }
