@@ -28,15 +28,20 @@ export async function processQuoteMake(domain:QuoteDomain){
         return;
     }
 
+    if(domain.getContentCount() < 1 ){
+        await domain.processError("Invaild ContentCount.");
+        return;
+    }
+
     const arrayContentsEng = domain.getContentsEng();
     if (arrayContentsEng.length != domain.getContentCount()) {
-        await domain.processError(`Invalid contents_eng count. length=${arrayContentsEng.length}, count=${quote.contentCount}`);
+        await domain.processError(`Invalid contents_eng count. length=${arrayContentsEng.length}, count=${domain.getContentCount()}`);
         return;
     }
 
     const arrayContentsKor = domain.getContentsKor();
     if (arrayContentsKor.length != domain.getContentCount()) {
-        await domain.processError(`Invalid contents_kor. length=${arrayContentsKor.length}, count=${quote.contentCount}`);
+        await domain.processError(`Invalid contents_kor. length=${arrayContentsKor.length}, count=${domain.getContentCount()}`);
         return;
     }
 
