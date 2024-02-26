@@ -1,16 +1,16 @@
 name: service-worker
 
 on:
-  push:
-    branches: [ production ]
-    paths:
-      - 'nodejs/lib/**/*'
-      - 'nodejs/service-worker/**/*'
-  pull_request:
+  pull_request_target:
     branches: [ production ]
     types:
       - opened
       - synchronize
+    paths:
+      - 'nodejs/lib/**/*'
+      - 'nodejs/service-worker/**/*'
+  push:
+    branches: [ production ]
     paths:
       - 'nodejs/lib/**/*'
       - 'nodejs/service-worker/**/*'
