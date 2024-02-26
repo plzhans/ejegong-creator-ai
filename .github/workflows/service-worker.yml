@@ -1,17 +1,19 @@
 name: service-worker
 
 on:
-  pull_request_target:
-    branches: [ production ]
+  push:
+    branches: [ develop, production ]
+    paths:
+      - .github/workflows/service-worker.yml
+      - 'nodejs/lib/**/*'
+      - 'nodejs/service-worker/**/*'
+  pull_request:
+    branches: [ develop, production ]
     types:
       - opened
       - synchronize
     paths:
-      - 'nodejs/lib/**/*'
-      - 'nodejs/service-worker/**/*'
-  push:
-    branches: [ production ]
-    paths:
+      - .github/workflows/service-worker.yml
       - 'nodejs/lib/**/*'
       - 'nodejs/service-worker/**/*'
   workflow_dispatch:
@@ -23,6 +25,7 @@ jobs:
     defaults:
       run:
         working-directory: nodejs/service-worker
+    if: github.event_name == 'push' && github.ref_name == 'production'
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -55,9 +58,9 @@ jobs:
             nodejs/service-worker/entrypoint.sh
 
   docker-build-push:
+    if: github.event_name == 'push' && github.ref_name == 'production'
     runs-on: ubuntu-latest
     needs: node-build
-    if: github.event_name == 'push' && github.ref_name == 'production'
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
