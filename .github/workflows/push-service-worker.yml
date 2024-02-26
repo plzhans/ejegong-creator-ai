@@ -4,7 +4,7 @@ on:
   push:
     branches: [ develop, production ]
     paths:
-      - .github/workflows/service-worker.yml
+      - .github/workflows/push-service-worker.yml
       - 'nodejs/lib/**/*'
       - 'nodejs/service-worker/**/*'
   workflow_dispatch:

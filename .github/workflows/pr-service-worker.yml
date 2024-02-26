@@ -7,7 +7,7 @@ on:
       - opened
       - synchronize
     paths:
-      - .github/workflows/service-worker.yml
+      - .github/workflows/pr-service-worker.yml
       - 'nodejs/lib/**/*'
       - 'nodejs/service-worker/**/*'
 env:
