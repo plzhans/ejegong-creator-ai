@@ -25,7 +25,6 @@ jobs:
     defaults:
       run:
         working-directory: nodejs/service-worker
-    if: github.event_name == 'push' && github.ref_name == 'production'
     steps:
       - name: Check out
         uses: actions/checkout@v4
