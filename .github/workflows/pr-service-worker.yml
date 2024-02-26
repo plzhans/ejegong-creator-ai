@@ -1,0 +1,37 @@
+name: service-worker
+
+on:
+  pull_request:
+    branches: [ develop, production ]
+    types:
+      - opened
+      - synchronize
+    paths:
+      - .github/workflows/service-worker.yml
+      - 'nodejs/lib/**/*'
+      - 'nodejs/service-worker/**/*'
+  workflow_dispatch:
+env:
+  DOCKER_REGISTRY: ghcr.io
+jobs:
+  node-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nodejs/service-worker
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Node Install
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "nodejs/service-worker/.nvmrc"
+          cache: 'npm'
+          cache-dependency-path: |
+            nodejs/lib/useapi-lib/package-lock.json
+      - name: Npm Install
+        run: npm ci --if-present
+      - name: Npm test
+        run: npm run test
+      - name: Npm Build
+        run: npm run build-full
