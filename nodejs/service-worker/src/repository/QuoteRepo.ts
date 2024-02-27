@@ -1,13 +1,13 @@
 import { FieldSet, Record, Table} from "airtable";
-import { QuoteDto } from "../datatypes/QuoteDto";
-import { AirtableSchemaOptions } from "../datatypes/Common";
+import { QuoteDto, QutoeStatus } from "../datatypes/QuoteDto";
+import { AirtableSchemaOptions, UrlAttachment } from "../datatypes/Common";
 import { createLogger } from "../lib/logger";
 import path from "path";
 
 const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 
 export interface QuoteRepo {
-    get_ready_one():Promise<QuoteDto | undefined>;
+    getReadyOne():Promise<QuoteDto | undefined>;
     update(recordId:string, data:QuoteDto):Promise<QuoteDto | undefined>;
 }
 
@@ -29,15 +29,44 @@ export class QuoteRepoImpl implements QuoteRepo {
         if (record_id){
             let data:QuoteDto = {
                 recordId: record_id,
+                status: record.get("status")?.toString() as QutoeStatus,
                 subject: record.get("주제")?.toString(),
                 contentCount: Number(record.get("명언 수")?.toString()) || 0,
                 contentsKor: record.get("내용")?.toString(),
                 contentsEng: record.get("내용_영어")?.toString(),
                 telegram_message_id: Number(record.get("Telegram_message_id")?.toString() || ""),
                 imageStatus: record.get("image_status")?.toString(),
-                //images: record.get("")?.toString(),
+                tts: record.get("tts") as UrlAttachment[],
+                images: record.get("images") as UrlAttachment[],
+                creatomateRederId: record.get("Creatomate_reder_id")?.toString(),
+                mediaUrl: record.get("Media URL")?.toString(),
+                snapshotUrl: record.get("Snapshot URL")?.toString(),
             };
             return data;
+        }
+        return undefined;
+    }
+
+    async getReadyOne():Promise<QuoteDto | undefined> {
+        const filter = [
+            "OR(",
+                `{status}=\"${QutoeStatus.Image_Ready}\"`,
+                `{status}=\"${QutoeStatus.Video_Ready}\"`,
+            ")"
+            ].join("");
+        try {
+            const base = this.getDefaultBase();
+
+            let records = await base.select({
+                maxRecords: 1,
+                filterByFormula: filter
+            }).firstPage();
+
+            if(records && records.length > 0) {
+                return this.parseQuoteDto(records[0]);                
+            } 
+        } catch(err){
+            logger.error(err);
         }
         return undefined;
     }
@@ -59,24 +88,5 @@ export class QuoteRepoImpl implements QuoteRepo {
         let result = await base.update(recordId, data);
         let dto = this.parseQuoteDto(result)
         return dto;
-    }
-
-    async get_ready_one():Promise<QuoteDto | undefined> {
-
-        try {
-            const base = this.getDefaultBase();
-
-            let records = await base.select({
-                maxRecords: 1,
-                filterByFormula: "AND({image_status}=\"ready\",{주제},{내용},{내용_영어})"
-            }).firstPage();
-
-            if(records && records.length > 0) {
-                return this.parseQuoteDto(records[0]);                
-            } 
-        } catch(err){
-            logger.error(err);
-        }
-        return undefined;
     }
 }

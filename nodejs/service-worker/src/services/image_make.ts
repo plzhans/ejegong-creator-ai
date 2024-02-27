@@ -1,26 +1,11 @@
 import { isEmpty } from "lodash";
-import { QuoteDomain } from "./domains/QuoteDomain";
-import { ConfigRepo, QuoteRepo } from "./repository/repo";
-import { QuoteImageDomain } from "./domains/QuoteImageDoamin";
-import { createLogger } from "./lib/logger";
-import { UrlAttachment } from "./datatypes/Common";
-import EjeCreator from "./lib/ejecreator";
+import { QuoteDomain } from "../domains/QuoteDomain";
+import { QuoteImageDomain } from "../domains/QuoteImageDoamin";
+import { createLogger } from "../lib/logger";
+import { UrlAttachment } from "../datatypes/Common";
+import EjeCreator from "../lib/ejecreator";
 
-export async function isProcessEnabled():Promise<boolean>{
-    let enabeld = await ConfigRepo().getBoolean("system.service_worker.enable");
-    return enabeld ?? false;
-}
-
-export async function getReadOne(): Promise<QuoteDomain | undefined>{
-    
-    let entity = await QuoteRepo().get_ready_one();
-    if(entity){
-        return new QuoteDomain(entity);
-    }
-    return undefined;
-}
-
-export async function processQuoteMake(domain:QuoteDomain){
+export async function processImageMake(domain:QuoteDomain){
     const logger = createLogger("processQuoteMake", {record_id: domain.getId()});
 
     if(!domain.isContents()) {
@@ -107,16 +92,19 @@ export async function processQuoteMake(domain:QuoteDomain){
     const imageArray = Array.from(imageMap.values()).sort((a, b) => (a.getQuotesIndex()) - (b.getQuotesIndex()));
     const promises = new Array<Promise<UrlAttachment>>();
     imageArray.map(quoteImage=>{
-        promises.push(processImageMake(domain, quoteImage));
+        promises.push(processMidjourneyMake(domain, quoteImage));
     });
 
     const finalImages = await Promise.all(promises);
     await domain.processImageCompleted(finalImages);
+
     await domain.sendCompletedMessage();
     await EjeCreator.sendImageConfirmYes(domain.getId());
+
+    await domain.processVideoReady();
 }
 
-async function processImageMake(quote:QuoteDomain, quoteImage:QuoteImageDomain):Promise<UrlAttachment>{
+async function processMidjourneyMake(quote:QuoteDomain, quoteImage:QuoteImageDomain):Promise<UrlAttachment>{
     if(!quoteImage.isQuoteTextEng()){
         return {};
     }

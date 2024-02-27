@@ -1,4 +1,4 @@
-import { QuoteDto } from "../datatypes/QuoteDto"
+import { QuoteDto, QutoeStatus } from "../datatypes/QuoteDto"
 import { createLogger } from "../lib/logger";
 import { Logger } from "winston";
 import { getAppConfig } from "../config";
@@ -9,6 +9,7 @@ import dateLib from "../lib/dateLib";
 import { EditMessageTextOptions, InlineKeyboardMarkup, SendMessageOptions } from "node-telegram-bot-api";
 import telegramLib from "../lib/telegramLib";
 import { QuoteImageDomain } from "./QuoteImageDoamin";
+import { Render as CreatomateRender } from "creatomate";
 
 export class QuoteDomain {
     
@@ -32,12 +33,37 @@ export class QuoteDomain {
         return this.entity.recordId;
     }
 
+    public getStatus(): QutoeStatus {
+        return this.entity.status ?? QutoeStatus.unknown;
+    }
+
     public getContentCount(): number {
         return this.entity.contentCount ?? 0;
     }
 
     public isContents():boolean{
         return !isEmpty(this.entity.contentsEng) && !isEmpty(this.entity.contentsKor);
+    }
+
+    public getVideoMakeData():QuoteVideoMakeData {
+        const entity = this.entity;
+        if(!entity.contentCount || entity.contentCount < 1 ){
+            throw new Error("Invalid contentCount");
+        }
+        const contentsKor = this.getContentsKor();
+        if(contentsKor.length != this.getContentCount()){
+            throw new Error(`Invalid contentsKor. lengh={contentsKor.length}, count=this.getContentCount())`);
+        }
+        const contentsEng = this.getContentsEng();
+        if(contentsEng.length != this.getContentCount()){
+            throw new Error(`Invalid contentsEng. lengh={contentsEng.length}, count=this.getContentCount())`);
+        }
+        if(!entity.images || entity.contentCount != entity.images.length){
+            throw new Error("Invalid images");
+        }
+        entity.images
+        const data = new QuoteVideoMakeData(entity.contentCount, contentsKor, contentsEng, entity.images);
+        return data;
     }
 
     public async processError(message:string): Promise<void> {
@@ -66,11 +92,15 @@ export class QuoteDomain {
         const updateResult = await QuoteRepo().update(this.entity.recordId, {
             recordId: this.entity.recordId,
             images: finalImages,
+            //status: QutoeStatus.Image_Completed,
+            status: QutoeStatus.Image_Completed,
             imageStatus: "completed"
         });
         if(!updateResult){
             this.logger.error(`QuoteRepo update error.`);
+            return;
         }
+        this.entity = updateResult;
     }
 
     public async sendCompletedMessage(){
@@ -145,5 +175,89 @@ export class QuoteDomain {
             return map;
         }, new Map<string, QuoteImageDomain>());
         return imageMap;
+    }
+
+    public async processVideoReady(){
+        const updateResult = await QuoteRepo().update(this.entity.recordId, {
+            recordId: this.entity.recordId,
+            status: QutoeStatus.Video_Completed,
+        });
+        if(!updateResult){
+            this.logger.error(`QuoteRepo update error.`);
+            return;
+        }
+        this.entity.status = updateResult.status;
+    }
+
+    public async processVideoMaking(render:CreatomateRender): Promise<boolean>{
+        const updateResult = await QuoteRepo().update(this.entity.recordId, {
+            recordId: this.entity.recordId,
+            status: QutoeStatus.Video_Making,
+            videoStatus: render.status,
+            creatomateRederId: render.id,
+            mediaUrl: render.url,
+            snapshotUrl: render.snapshotUrl,
+        });
+        if(!updateResult){
+            this.logger.error(`QuoteRepo update error.`);
+            return false;
+        }
+        this.entity = updateResult;
+        return true;
+    }
+
+    public async processVideoCompleted(){
+        const entity = this.entity;
+        if(!entity.creatomateRederId){
+            return;
+        }
+
+        
+    }
+}
+
+export class QuoteVideoMakeData {
+    public Count:number;
+    public korContents:QuoteContents[];
+    public engContents:QuoteContents[];
+    public backgroundImage: string[];
+
+    public getKorContents():QuoteContents[]{
+        return this.korContents;
+    }
+
+    public getEngContents():QuoteContents[]{
+        return this.engContents;
+    }
+
+    constructor(count:number, contents:string[], contentEng:string[], images:UrlAttachment[]){
+        this.Count = count;
+        this.korContents = new Array<QuoteContents>(count);
+        this.engContents = new Array<QuoteContents>(count);
+        this.backgroundImage = new Array<string>(count);
+        contents.forEach(data=>{
+            const contents = new QuoteContents(data);
+            this.korContents.push(contents);
+        });
+        contentEng.forEach(data=>{
+            const contents = new QuoteContents(data);
+            this.engContents.push(contents);
+        });
+        images.forEach(data=>{
+            this.backgroundImage.push(data.url??"");
+        })
+    }
+}
+
+export class QuoteContents {
+    quotation:string;
+    name: string;
+    source:string;
+
+    constructor(contents:string){
+        const split = contents.split('|');
+        this.quotation = split[0];
+        this.name = split[1];
+        this.source = split[2];
     }
 }

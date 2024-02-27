@@ -247,6 +247,10 @@ export async function initConfig():Promise<AppConfig>{
         token : configuration.getStringOrThrow("telegram.bot.token"),
         default_chat_id : configuration.getStringOrThrow("telegram.bot.default_chat_id"),
       }
+    },
+    creatomate: {
+      api_key: configuration.getStringOrThrow("creatomate.api_key"),
+      template_id: configuration.getStringOrThrow("creatomate.template_id"),
     }
   };
   _appConfig = config;
@@ -262,6 +266,7 @@ export async function initConfig():Promise<AppConfig>{
   logger.info(`google.service_account.client_id: ${config.google.service_account.client_id}`);
   logger.info(`google.service_account.client_email: ${config.google.service_account.client_email}`);
   logger.info(`google.service_account.private_key_id: ${config.google.service_account.private_key_id}`);
+  logger.info(`creatomate.template_id: ${config.creatomate.template_id}`);
   
 
   return config;
@@ -312,6 +317,10 @@ export interface AppConfig{
       token: string,
       default_chat_id: string,
     }
+  },
+  creatomate: {
+    api_key: string,
+    template_id: string
   }
 }
 

@@ -1,4 +1,4 @@
-import { getReadOne, isProcessEnabled, processQuoteMake } from "./process";
+import { getProcessData, isProcessEnabled, processNext } from "./services/process";
 import { initConfig } from "./config";
 import { sleep } from "./lib/taskLib";
 import { createLogger } from "./lib/logger";
@@ -21,9 +21,9 @@ async function main(): Promise<void> {
     if(process.argv.includes("--debug-one")){
         logger.info(`process start. --debug-one`);
         if(await isProcessEnabled()){
-            const quote = await getReadOne();
+            const quote = await getProcessData();
             if(quote){
-                await processQuoteMake(quote);
+                await processNext(quote);
             } else {
                 logger.info("Notfound queue data.");
             }
@@ -34,16 +34,16 @@ async function main(): Promise<void> {
         logger.info(`process start.`);
         while(true){
             if(await isProcessEnabled()){
-                const quote = await getReadOne();
+                const quote = await getProcessData();
                 if(quote){
-                    await processQuoteMake(quote);
+                    await processNext(quote);
                     while(true){
                         if(await isProcessEnabled()){
-                            const quote = await getReadOne();
+                            const quote = await getProcessData();
                             if(!quote){
                                 break;
                             }
-                            await processQuoteMake(quote);
+                            await processNext(quote);
                             await sleep(1000);
                         }
                     }
