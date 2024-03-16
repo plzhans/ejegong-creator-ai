@@ -1,7 +1,8 @@
 import TelegramBot from 'node-telegram-bot-api';
 import path from "path";
-import { BaseLogger } from 'service-base';
+import {BaseLogger, currentApp} from 'service-base';
 import { getAppConfig } from '../config';
+import os from 'os';
 
 const logger = BaseLogger.createLogger(path.basename(__filename, path.extname(__filename)));
 
@@ -12,7 +13,6 @@ namespace telegramBot {
     export function getBot():TelegramBot{
         if(!bot){
             const config = getAppConfig();
-            console.debug("해!");
             bot = new TelegramBot(config.telegram.bot.token, {
                 polling: true
             });
@@ -65,6 +65,22 @@ namespace telegramBot {
         bot.on('channel_post', (msg) => {
             action(bot, msg)
         });
+    }
+
+    export function onStarted(){
+        const pkg = currentApp.getPublicPackageInfo();
+        const message = [
+            `[SYSTEM][${pkg.name}] start.`,
+            `>> version : ${pkg.version}`,
+            `>> hostname: ${os.hostname}`
+        ].join('\n');
+
+        const config = getAppConfig();
+        const bot = getBot();
+        bot.sendMessage(config.telegram.bot.default_chat_id, message)
+            .catch(err=>{
+                logger.error(`getTelegramBot().editMessageText(): fail. ${err}`);
+            });
     }
 
     export function onCallbackQuery(action:(bot:TelegramBot, query:TelegramBot.CallbackQuery)=>void){

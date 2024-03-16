@@ -35,6 +35,7 @@ async function main(): Promise<void> {
     telegramBot.onMessage(telegramEventMessage);
     telegramBot.onChannelPost(telegramEventMessage);
     telegramBot.onCallbackQuery(telegramEventCallbackQuery);
+    telegramBot.onStarted();
 
     // Start the server
     app.listen(port, () => {
