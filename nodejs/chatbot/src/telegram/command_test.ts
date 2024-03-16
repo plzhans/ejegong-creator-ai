@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 
 export namespace CommandTest {
 
-    export function onMessage(bot:TelegramBot, msg:TelegramBot.Message, metadata:TelegramBot.Metadata|undefined, commands:string[]){
+    export function onMessage({ bot, msg, metadata, commands }: { bot: TelegramBot; msg: TelegramBot.Message; metadata: TelegramBot.Metadata | undefined; commands: string[]; }){
         switch (commands[1]){
             case "123": {
                 bot.sendMessage(msg.chat.id, "-123", {
@@ -13,8 +13,10 @@ export namespace CommandTest {
                         }]]
                     }
                 })
-            } 
-            break;
+            } break;
+            
+            default:
+                break;
         }
     }
 

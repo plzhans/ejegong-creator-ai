@@ -37,6 +37,7 @@ async function getConfiguration():Promise<BaseConfig.Configuration>{
 export async function initConfig():Promise<AppConfig>{
   const configuration = await getConfiguration();
   const config:AppConfig = {
+    env: configuration.getStringOrThrow("env"),
     ejecreator: {
       api: {
         url: configuration.getStringOrThrow("ejecreator.api.url"),
@@ -60,6 +61,7 @@ export async function initConfig():Promise<AppConfig>{
   };
   _appConfig = config;
 
+  logger.info(`env: ${config.env}`);
   logger.info(`ejecreator.api.url: ${config.ejecreator.api.url}`);
   logger.info(`airtable.tables.config: ${config.airtable.tables.config}`);
   logger.info(`airtable.tables.quote: ${config.airtable.tables.quote}`);
@@ -84,6 +86,7 @@ export interface GoogleServiceAccount {
 }
 
 export interface AppConfig{
+  env: string,
   ejecreator: {
     api: {
       url: string,

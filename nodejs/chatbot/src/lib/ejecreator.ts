@@ -22,7 +22,7 @@ export namespace EjeCreator {
 
     export async function sendContentRequest(record_id:string, telegram_bot_message_id:number|undefined):Promise<boolean> {
         const config = getAppConfig();
-        const url = `${config.ejecreator.api.url}?record_id=${record_id}&tg_message_id=${telegram_bot_message_id}`;
+        const url = `${config.ejecreator.api.url}?env=${config.env}&step=content_request&record_id=${record_id}`;
         return await fetch(url, {
             method: "GET",
         }).then(res=>{

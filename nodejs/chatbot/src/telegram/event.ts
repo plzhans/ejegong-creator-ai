@@ -8,9 +8,9 @@ export function telegramEventMessage(bot:TelegramBot, msg:TelegramBot.Message, m
         commands[0] = commands[0].replace('/','');
         switch(commands[0]){
             case "shorts": 
-                return CommandShorts.onMessage(bot,  msg, metadata, commands);
+                return CommandShorts.onMessage({ bot, msg, metadata, commands });
             case "test":
-                return CommandTest.onMessage(bot, msg, metadata, commands);
+                return CommandTest.onMessage({ bot, msg, metadata, commands });
         }
     }
 }

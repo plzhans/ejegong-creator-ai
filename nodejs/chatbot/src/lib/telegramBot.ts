@@ -68,9 +68,10 @@ namespace telegramBot {
     }
 
     export function onStarted(){
+        const app = getAppConfig();
         const pkg = currentApp.getPublicPackageInfo();
         const message = [
-            `[SYSTEM][${pkg.name}] start.`,
+            `[SYSTEM][${pkg.name}] start. env=${app.env}`,
             `>> version : ${pkg.version}`,
             `>> hostname: ${os.hostname}`
         ].join('\n');
