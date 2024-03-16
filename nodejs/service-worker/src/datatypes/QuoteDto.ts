@@ -6,6 +6,7 @@ export interface QuoteDto {
     contentCount?: number;
     contentsKor?: string;
     contentsEng?: string;
+    telegram_chat_id?: number;
     telegram_message_id?: number;
     status?: QutoeStatus;
     imageStatus?: string;
@@ -27,7 +28,7 @@ export enum QutoeStatus {
     // 생성된 내용 컨펌 요청중
     Content_Confirm = "content_confirm",
     // 컨텐츠 내용 완성
-    Content_Completed = "content_ready",
+    Content_Completed = "content_completed",
     // TTS 요청중
     TTS_Makeing = "tts_makeing",
     // tts 완성

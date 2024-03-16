@@ -48,12 +48,7 @@ export class QuoteRepoImpl implements QuoteRepo {
     }
 
     async getReadyOne():Promise<QuoteDto | undefined> {
-        const filter = [
-            "OR(",
-                `{status}=\"${QutoeStatus.Image_Ready}\"`,
-                `{status}=\"${QutoeStatus.Video_Ready}\"`,
-            ")"
-            ].join("");
+        const filter = `{status}=\"${QutoeStatus.Content_Completed}\"`;
         try {
             const base = this.getDefaultBase();
 
@@ -75,16 +70,21 @@ export class QuoteRepoImpl implements QuoteRepo {
         const base = this.getDefaultBase();
 
         let data:any = {};
+        if (input.status) {
+            data.status = input.status;
+        }
         if (input.imageStatus) {
             data.image_status = input.imageStatus;
         }
         if (input.images) {
             data.images = input.images;
         }
+        if(input.telegram_chat_id){
+            data.telegram_chat_id = input.telegram_chat_id?.toString();
+        }
         if(input.telegram_message_id){
             data.Telegram_message_id = input.telegram_message_id?.toString();
         }
-
         let result = await base.update(recordId, data);
         let dto = this.parseQuoteDto(result)
         return dto;

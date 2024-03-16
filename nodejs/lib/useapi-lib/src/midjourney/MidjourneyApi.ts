@@ -80,7 +80,7 @@ export class MidjourneyApiImpl implements MidjourneyApi {
     }
 
     async getJob(jobid: string): Promise<GetJobResponse> {
-        const url = `https://api.useapi.net/v1/jobs/?jobid=${jobid}`;
+        const url = `https://api.useapi.net/v2/jobs/?jobid=${jobid}`;
         let httpRes = await fetch(url, {
             method: "GET",
             headers: this.getDefaultHeader(),
@@ -104,7 +104,7 @@ export class MidjourneyApiImpl implements MidjourneyApi {
             request.channel = this.options.getDefaultDiscordChannel();
         }
 
-        const url = "https://api.useapi.net/v1/jobs/imagine";
+        const url = "https://api.useapi.net/v2/jobs/imagine";
         const fetchAsync = fetch(url, {
             method: "POST",
             headers: this.getDefaultHeader(),
@@ -134,7 +134,7 @@ export class MidjourneyApiImpl implements MidjourneyApi {
             request.discord = this.options.getDefaultDiscordToken();
         }
 
-        const url = "https://api.useapi.net/v1/jobs/button";
+        const url = "https://api.useapi.net/v2/jobs/button";
         const fetchAsync = fetch(url, {
             method: "POST",
             headers: this.getDefaultHeader(),

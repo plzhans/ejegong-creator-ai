@@ -40,6 +40,23 @@
             // "cwd": "${workspaceFolder}/nodejs/service-worker",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
+        },
+        {
+            "type": "node",
+            "runtimeVersion": "20.11.1",
+            "request": "launch",
+            "name": "Debug - chatbot",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/nodejs/chatbot/src/main.ts",
+            "preLaunchTask": "tsc: build - chatbot",
+            "outFiles": ["${workspaceFolder}/nodejs/chatbot/dist/**/*.js"],
+            // "args": ["-r", "tsconfig-paths/register", "${workspaceFolder}/nodejs/chatbot/src/main.ts"],
+            "sourceMaps": true,
+            // "cwd": "${workspaceFolder}/nodejs/chatbot",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
         }
     ]
 }

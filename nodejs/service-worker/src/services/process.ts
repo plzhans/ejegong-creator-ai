@@ -20,11 +20,11 @@ export async function getProcessData(): Promise<QuoteDomain | undefined>{
 
 export async function processNext(quote:QuoteDomain){
     switch(quote.getStatus()){
-        case QutoeStatus.Image_Ready:{
+        case QutoeStatus.Content_Completed:{
             await processImageMake(quote);
         } break;
-        case QutoeStatus.Ready:{
-            await processVideoMake(quote);
-        } break;
+        // case QutoeStatus.Ready:{
+        //     await processVideoMake(quote);
+        // } break;
     }
 }

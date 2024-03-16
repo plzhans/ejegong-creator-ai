@@ -92,7 +92,6 @@ export class QuoteDomain {
         const updateResult = await QuoteRepo().update(this.entity.recordId, {
             recordId: this.entity.recordId,
             images: finalImages,
-            //status: QutoeStatus.Image_Completed,
             status: QutoeStatus.Image_Completed,
             imageStatus: "completed"
         });
