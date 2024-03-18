@@ -36,6 +36,7 @@
     "lodash": "^4.17.21",
     "moment": "^2.30.1",
     "node-telegram-bot-api": "^0.64.0",
+    "openai": "^4.29.1",
     "reflect-metadata": "^0.2.1",
     "service-base": "file:../service-base",
     "typescript": "^5.3.3",

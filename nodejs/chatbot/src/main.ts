@@ -9,6 +9,7 @@ import { telegramEventMessage, telegramEventCallbackQuery } from './telegram/eve
 import { initConfig } from './config';
 import { BaseLogger } from 'service-base';
 import CommandShorts from './telegram/command_shorts';
+import CommandChatGPT from './telegram/command_chatgpt';
 
 const logger = BaseLogger.createLogger(path.basename(__filename, path.extname(__filename)));
 
@@ -34,11 +35,12 @@ async function main(): Promise<void> {
 
     //
     telegramBot.onSetMyCommands([
-        ...CommandShorts.getMyCommands()
+        ...CommandShorts.getMyCommands(),
+        ...CommandChatGPT.getMyCommands()
     ]);
-    telegramBot.onMessage(telegramEventMessage);
-    telegramBot.onChannelPost(telegramEventMessage);
-    telegramBot.onCallbackQuery(telegramEventCallbackQuery);
+    await telegramBot.onMessage(telegramEventMessage);
+    await telegramBot.onChannelPost(telegramEventMessage);
+    await telegramBot.onCallbackQuery(telegramEventCallbackQuery);
     telegramBot.onStarted();
 
     // Start the server

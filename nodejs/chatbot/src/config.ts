@@ -38,6 +38,9 @@ export async function initConfig():Promise<AppConfig>{
   const configuration = await getConfiguration();
   const config:AppConfig = {
     env: configuration.getStringOrThrow("env"),
+    openai: {
+      api_key: configuration.getStringOrThrow("openai.api_key")
+    },
     ejecreator: {
       api: {
         url: configuration.getStringOrThrow("ejecreator.api.url"),
@@ -87,6 +90,9 @@ export interface GoogleServiceAccount {
 
 export interface AppConfig{
   env: string,
+  openai: {
+    api_key: string
+  },
   ejecreator: {
     api: {
       url: string,

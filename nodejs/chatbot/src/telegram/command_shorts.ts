@@ -24,7 +24,7 @@ function getQuoteTable():Airtable.Table<FieldSet>{
 
 export namespace CommandShorts {
 
-    export const Name = "shorts";
+    export const Name = "/shorts";
 
     export enum CallbackTypes {
         CALLBACK_CONTENT_REQUEST = "001"
@@ -36,72 +36,76 @@ export namespace CommandShorts {
         ]
     }
 
-    export async function onMessage({ bot, msg, metadata, commands }: { bot: TelegramBot; msg: TelegramBot.Message; metadata: TelegramBot.Metadata | undefined; commands: string[]; }){
-        switch (commands[1]){
-            case "create": {
-                const config = getAppConfig();
-                const defaultChatId = config.telegram.bot.default_chat_id;
-                const subject_title = commands.slice(2).join(' ');
-                const subject_count = 7;
-                if(isEmpty(subject_title)) {
-                    return;
-                }
-
-                const message = [
-                    `[Make] 명언 생성 자동화`,
-                    `>> 상태 : 주제 등록 준비`,
-                    `>> 주제 : ${subject_title}, ${subject_count}개`,
-                    //`>> record_id : ${record.getId()}`,
-                ].join('\n');
-                
-                bot.sendMessage(defaultChatId, message).then(msg=>{
-                    const table = getQuoteTable();
-                    table.create({
-                        "주제": subject_title,
-                        "명언 수": subject_count.toString(),
-                        "telegram_chat_id": msg.chat.id.toString(),
-                        "Telegram_message_id": msg.message_id.toString(),
-                        "status": "ready"
-                    }).then(record=>{
-                        const message = [
-                            `[Make] 명언 생성 자동화`,
-                            `>> 상태 : 주제 등록 완료`,
-                            `>> 주제 : ${subject_title}, ${subject_count}개`,
-                            `>> record_id : ${record.getId()}`,
-                        ].join('\n');
-                        bot.editMessageText(message, {
-                            chat_id: msg.chat.id,
-                            message_id: msg.message_id,
-                            reply_markup: {
-                                inline_keyboard: [[{
-                                    text: "Retry",
-                                    callback_data: [commands[0], CallbackTypes.CALLBACK_CONTENT_REQUEST, record.id].join(';')
-                                }]]
-                            }
-                        }).then(msg=>{
-                            EjeCreator.sendStep(QutoeStatus.Content_Request,record.getId())
-                            .then(res=>{
-                                logger.info(`EjeCreator.sendContentRequest(): ok. ${res}`);
+    export async function onMessage({ bot, msg, metadata }: { bot: TelegramBot; msg: TelegramBot.Message; metadata: TelegramBot.Metadata | undefined;}){
+        const commands = msg.text?.split(' ');
+        if(commands){
+            switch (commands[1]){
+                case "create": {
+                    const config = getAppConfig();
+                    const defaultChatId = config.telegram.bot.default_chat_id;
+                    const subject_title = commands.slice(2).join(' ');
+                    const subject_count = 7;
+                    if(isEmpty(subject_title)) {
+                        return;
+                    }
+    
+                    const message = [
+                        `[Make] 명언 생성 자동화`,
+                        `>> 상태 : 주제 등록 준비`,
+                        `>> 주제 : ${subject_title}, ${subject_count}개`,
+                        //`>> record_id : ${record.getId()}`,
+                    ].join('\n');
+                    
+                    bot.sendMessage(defaultChatId, message).then(msg=>{
+                        const table = getQuoteTable();
+                        table.create({
+                            "주제": subject_title,
+                            "명언 수": subject_count.toString(),
+                            "telegram_chat_id": msg.chat.id.toString(),
+                            "Telegram_message_id": msg.message_id.toString(),
+                            "status": "ready"
+                        }).then(record=>{
+                            const message = [
+                                `[Make] 명언 생성 자동화`,
+                                `>> 상태 : 주제 등록 완료`,
+                                `>> 주제 : ${subject_title}, ${subject_count}개`,
+                                `>> record_id : ${record.getId()}`,
+                            ].join('\n');
+                            bot.editMessageText(message, {
+                                chat_id: msg.chat.id,
+                                message_id: msg.message_id,
+                                reply_markup: {
+                                    inline_keyboard: [[{
+                                        text: "Retry",
+                                        callback_data: [commands[0], CallbackTypes.CALLBACK_CONTENT_REQUEST, record.id].join(';')
+                                    }]]
+                                }
+                            }).then(msg=>{
+                                EjeCreator.sendStep(QutoeStatus.Content_Request,record.getId())
+                                .then(res=>{
+                                    logger.info(`EjeCreator.sendContentRequest(): ok. ${res}`);
+                                })
+                                .catch(err=>{
+                                    logger.error(`EjeCreator.sendContentRequest(): error. ${err}`);
+                                });
                             })
                             .catch(err=>{
-                                logger.error(`EjeCreator.sendContentRequest(): error. ${err}`);
+                                logger.error(`editMessageText(): error. ${err}`);
                             });
+                        }).catch(err=>{
+                            bot.sendMessage(defaultChatId, `${msg.text}\n\n[Error] table.create(): error. ${err}`);
+                            logger.error(`table.create(): error. ${err}`);
                         })
-                        .catch(err=>{
-                            logger.error(`editMessageText(): error. ${err}`);
-                        });
                     }).catch(err=>{
-                        bot.sendMessage(defaultChatId, `${msg.text}\n\n[Error] table.create(): error. ${err}`);
-                        logger.error(`table.create(): error. ${err}`);
-                    })
-                }).catch(err=>{
-                    logger.error(`sendMessage(): error. ${err}`);
-                });
-            } break;
-            
-            default: 
-                break;
+                        logger.error(`sendMessage(): error. ${err}`);
+                    });
+                } break;
+                
+                default: 
+                    break;
+            }
         }
+        
     }
 
     export function onCallbackQuery(bot:TelegramBot, query:TelegramBot.CallbackQuery, args:string[]){

@@ -7,6 +7,7 @@ import os from 'os';
 const logger = BaseLogger.createLogger(path.basename(__filename, path.extname(__filename)));
 
 let bot:TelegramBot|undefined = undefined;
+let botMe:TelegramBot.User|undefined = undefined;
 let defaultChatId:string|undefined = undefined;
 
 namespace telegramBot {
@@ -26,6 +27,15 @@ namespace telegramBot {
             defaultChatId = config.telegram.bot.default_chat_id;
         }
         return defaultChatId;
+    }
+
+    export async function getBotMe():Promise<TelegramBot.User>{
+        if(!botMe){
+            const bot = getBot();
+            const me = await bot.getMe();
+            botMe = me;
+        }
+        return botMe;
     }
 
     export async function sendMessage(text:string, options?: TelegramBot.SendMessageOptions):Promise<TelegramBot.Message|undefined>{
@@ -52,22 +62,32 @@ namespace telegramBot {
             });
     }
 
-    export function onMessage(action:(bot:TelegramBot, msg:TelegramBot.Message, medadata:TelegramBot.Metadata)=>void){
+    export async function onMessage(action:(bot:TelegramBot, botUser:TelegramBot.User, msg:TelegramBot.Message, medadata:TelegramBot.Metadata)=>void){
         const bot = getBot();
+        const botMe = await getBotMe();
         bot.on('message', (msg, medadata) => {
-            action(bot, msg, medadata);
+            action(bot, botMe, msg, medadata);
         });
         
     }
 
-    export function onChannelPost(action:(bot:TelegramBot, msg:TelegramBot.Message)=>void){
+    export async function onChannelPost(action:(bot:TelegramBot, botUser:TelegramBot.User, msg:TelegramBot.Message)=>void){
         const bot = getBot();
+        const botMe = await getBotMe();
         bot.on('channel_post', (msg) => {
-            action(bot, msg)
+            action(bot, botMe, msg)
         });
     }
 
-    export function onStarted(){
+    export async function onCallbackQuery(action:(bot:TelegramBot, botUser:TelegramBot.User, query:TelegramBot.CallbackQuery)=>void){
+        const bot = getBot();
+        const botMe = await getBotMe();
+        bot.on('callback_query', (query) => {
+            action(bot, botMe, query)
+        });
+    }
+
+    export async function onStarted(){
         const app = getAppConfig();
         const pkg = currentApp.getPublicPackageInfo();
         const message = [
@@ -91,13 +111,6 @@ namespace telegramBot {
             logger.error(`bot.setMyCommands(): fail. ${err}`);
         });
 
-    }
-
-    export function onCallbackQuery(action:(bot:TelegramBot, query:TelegramBot.CallbackQuery)=>void){
-        const bot = getBot();
-        bot.on('callback_query', (query) => {
-            action(bot, query)
-        });
     }
 }
 
