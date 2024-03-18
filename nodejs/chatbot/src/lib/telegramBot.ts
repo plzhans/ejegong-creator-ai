@@ -31,7 +31,7 @@ namespace telegramBot {
     export async function sendMessage(text:string, options?: TelegramBot.SendMessageOptions):Promise<TelegramBot.Message|undefined>{
         return getBot().sendMessage(getDefaultChatId(), text, options)
             .catch((err)=>{
-                logger.error("getTelegramBot().sendMessage(): fail.");
+                logger.error("bot.sendMessage(): fail.");
                 logger.error(err);
                 return undefined;
             });
@@ -78,10 +78,19 @@ namespace telegramBot {
 
         const config = getAppConfig();
         const bot = getBot();
+
         bot.sendMessage(config.telegram.bot.default_chat_id, message)
             .catch(err=>{
-                logger.error(`getTelegramBot().editMessageText(): fail. ${err}`);
+                logger.error(`bot.editMessageText(): fail. ${err}`);
             });
+    }
+
+    export function onSetMyCommands(commands: TelegramBot.BotCommand[],options?: {language_code?: string;scope?: TelegramBot.BotCommandScope}){
+        const bot = getBot();
+        bot.setMyCommands(commands, options).catch(err=>{
+            logger.error(`bot.setMyCommands(): fail. ${err}`);
+        });
+
     }
 
     export function onCallbackQuery(action:(bot:TelegramBot, query:TelegramBot.CallbackQuery)=>void){

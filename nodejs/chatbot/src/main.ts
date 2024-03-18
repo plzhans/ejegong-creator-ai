@@ -8,6 +8,7 @@ import telegramBot from './lib/telegramBot';
 import { telegramEventMessage, telegramEventCallbackQuery } from './telegram/event';
 import { initConfig } from './config';
 import { BaseLogger } from 'service-base';
+import CommandShorts from './telegram/command_shorts';
 
 const logger = BaseLogger.createLogger(path.basename(__filename, path.extname(__filename)));
 
@@ -32,6 +33,9 @@ async function main(): Promise<void> {
     app.use('/telegram', telegramRoutes);
 
     //
+    telegramBot.onSetMyCommands([
+        ...CommandShorts.getMyCommands()
+    ]);
     telegramBot.onMessage(telegramEventMessage);
     telegramBot.onChannelPost(telegramEventMessage);
     telegramBot.onCallbackQuery(telegramEventCallbackQuery);

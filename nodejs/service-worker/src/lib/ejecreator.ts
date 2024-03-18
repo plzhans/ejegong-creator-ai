@@ -3,11 +3,12 @@ import { getAppConfig } from "../config";
  
 
 export namespace EjeCreator {
-    export async function sendImageConfirmYes(recordId:string):Promise<boolean> {
+   
+    export async function sendStep(step:string, record_id:string):Promise<boolean> {
         const config = getAppConfig();
-        const url = `${config.ejecreator.api.url}?step=image-confirm-yes&record_id=${recordId}`;
+        const url = `${config.ejecreator.api.url}?env=${config.env}&step=${step}&record_id=${record_id}`;
         return await fetch(url, {
-            method: "GET"
+            method: "GET",
         }).then(res=>{
             return true;
         }).catch(err=>{

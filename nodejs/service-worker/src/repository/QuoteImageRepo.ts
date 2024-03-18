@@ -97,28 +97,28 @@ export class QuoteImageRepoImpl implements QuoteImageRepo {
 
         let data:any = {};
         //data.updated = string;
-        if(input.parentId){
+        if(input.parentId != undefined){
             data.parent_id = input.parentId;
         }
         if(input.quotesIndex){
             data.quotes_index = input.quotesIndex.toString();
         }
-        if(input.quotesText){
+        if(input.quotesText != undefined){
             data.quotes_text = input.quotesText;
         }
-        if(input.author){
+        if(input.author != undefined){
             data.author = input.author;
         }
-        if(input.quotesTextEng){
+        if(input.quotesTextEng != undefined){
             data.quotes_text_eng = input.quotesTextEng;
         }
-        if(input.authorEng){
+        if(input.authorEng != undefined){
             data.author_eng = input.authorEng;
         }
-        if (input.status) {
+        if (input.status != undefined) {
             data.status = input.status;
         }
-        if(input.midjourneyJobId){
+        if(input.midjourneyJobId != undefined){
             data.midjourney_job_id = input.midjourneyJobId;
         }
         if (input.images) {

@@ -1,8 +1,7 @@
+import { QutoeStatus } from "service-base";
 import { QuoteDomain } from "../domains/QuoteDomain";
 import { ConfigRepo, QuoteRepo } from "../repository/repo";
-import { QutoeStatus } from "../datatypes/QuoteDto";
 import { processImageMake } from "./image_make";
-import { processVideoMake } from "./video_make";
 
 export async function isProcessEnabled():Promise<boolean>{
     let enabeld = await ConfigRepo().getBoolean("system.service_worker.enable");

@@ -4,6 +4,8 @@ import { QuoteImageDomain } from "../domains/QuoteImageDoamin";
 import { createLogger } from "../lib/logger";
 import { UrlAttachment } from "../datatypes/Common";
 import EjeCreator from "../lib/ejecreator";
+import { QutoeStatus } from "service-base";
+import moment from "moment";
 
 export async function processImageMake(domain:QuoteDomain){
     const logger = createLogger("processQuoteMake", {record_id: domain.getId()});
@@ -96,12 +98,15 @@ export async function processImageMake(domain:QuoteDomain){
     });
 
     const finalImages = await Promise.all(promises);
-    await domain.processImageCompleted(finalImages);
+    if(domain.getContentCount() == finalImages.filter(x=>x.url).length){
+        await domain.processImageCompleted(finalImages);
+        await domain.processVideoReady();
 
-    await domain.sendCompletedMessage();
-    await EjeCreator.sendImageConfirmYes(domain.getId());
-
-    await domain.processVideoReady();
+        await domain.sendCompletedMessage();
+        await EjeCreator.sendStep(QutoeStatus.Image_Completed, domain.getId());
+    } else {
+        await domain.processError("error_images_length");
+    }
 }
 
 async function processMidjourneyMake(quote:QuoteDomain, quoteImage:QuoteImageDomain):Promise<UrlAttachment>{
@@ -132,6 +137,27 @@ async function processMidjourneyMake(quote:QuoteDomain, quoteImage:QuoteImageDom
                 return {};
             }
             switch(jobRes.status) {
+                case "started":
+                    // 5분 내에 갱신이 안되어 있으면 useapi 문제로 다시 시도함
+                    if(moment() > moment(jobRes.updated).add(5, 'minute')){
+                        switch(jobRes.verb){
+                            case "imagine":
+                            case "button":
+                                // 이미지 다시 요청하기
+                                await quoteImage.clearMidjourney();
+                            default:
+                                console.debug("Invalid verb error.");
+                                console.debug(jobRes);
+                                await new Promise(resolve => setTimeout(resolve, 1000 * 20));
+                                break;
+                        }
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * 20));
+                        break;
+                    }
+                case "cancelled":
+                    await quoteImage.clearMidjourney();
+                    break;
                 case "completed":
                     switch(jobRes.verb){
                         case "imagine":
@@ -152,7 +178,7 @@ async function processMidjourneyMake(quote:QuoteDomain, quoteImage:QuoteImageDom
                             if(processCompletedResult == 1) {
                                 return {url:  quoteImage.getImageUrl()}
                             } else {
-                                await quote.processError(`quoteImage.processCompleted(): fail. code={processCompletedResult}`);
+                                await quote.processError(`quoteImage.processCompleted(): fail. code=${processCompletedResult}`);
                                 return {};
                             }
                         default:
@@ -161,7 +187,6 @@ async function processMidjourneyMake(quote:QuoteDomain, quoteImage:QuoteImageDom
                     }
                     break; 
                 case "created":
-                case "started":
                 case "moderated":
                 case "progress":
                     await new Promise(resolve => setTimeout(resolve, 1000 * 20));

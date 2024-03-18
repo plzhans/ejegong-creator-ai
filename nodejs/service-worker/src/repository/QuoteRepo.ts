@@ -1,8 +1,9 @@
 import { FieldSet, Record, Table} from "airtable";
-import { QuoteDto, QutoeStatus } from "../datatypes/QuoteDto";
+import { QuoteDto } from "../datatypes/QuoteDto";
 import { AirtableSchemaOptions, UrlAttachment } from "../datatypes/Common";
 import { createLogger } from "../lib/logger";
 import path from "path";
+import { QutoeStatus } from "service-base";
 
 const logger = createLogger(path.basename(__filename, path.extname(__filename)));
 

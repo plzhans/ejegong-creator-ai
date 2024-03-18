@@ -25,4 +25,4 @@ export namespace CommandTest {
     }
 }
 
-export default CommandTest;  
+export default CommandTest;

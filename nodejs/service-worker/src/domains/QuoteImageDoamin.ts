@@ -90,6 +90,61 @@ export class QuoteImageDomain {
         return jobRes;
     }
 
+    public async clearMidjourney(): Promise<number> {
+        const quoteUpdated = await QuoteImageRepo().update(this.entity.recordId, {
+            recordId: "",
+            status: "",
+            midjourneyJobId: "",
+            images: [],
+            imageWidth: 0,
+            imageHeight: 0,
+            imageSize: 0
+        });
+        if(!quoteUpdated){
+            this.logger.error(`QuoteImageRepo update fail.`);
+            return 2;
+        } 
+
+        this.entity = quoteUpdated;
+
+        return 1;
+    }
+
+    public async parentRollbackMidjourney(parentJobId:string|undefined): Promise<number> {
+        if(parentJobId){
+            const quoteUpdated = await QuoteImageRepo().update(this.entity.recordId, {
+                recordId: "",
+                status: "imagine",
+                midjourneyJobId: parentJobId,
+                images: [],
+                imageWidth: 0,
+                imageHeight: 0,
+                imageSize: 0
+            });
+            if(!quoteUpdated){
+                this.logger.error(`QuoteImageRepo update fail.`);
+                return 1;
+            } 
+            this.entity = quoteUpdated;
+        } else {
+            const quoteUpdated = await QuoteImageRepo().update(this.entity.recordId, {
+                recordId: "",
+                status: "",
+                midjourneyJobId: "",
+                images: [],
+                imageWidth: 0,
+                imageHeight: 0,
+                imageSize: 0
+            });
+            if(!quoteUpdated){
+                this.logger.error(`QuoteImageRepo update fail.`);
+                return 2;
+            } 
+            this.entity = quoteUpdated;
+        }
+        return 1;
+    }
+
     public async sendMidjourneyImagine(): Promise<number> {
         const prompt = this.createImagePrompt();
         const imagineReq = new JobImagineRequest(prompt);

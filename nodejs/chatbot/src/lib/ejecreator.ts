@@ -20,23 +20,11 @@ export namespace EjeCreator {
         })
     }
 
-    export async function sendContentRequest(record_id:string, telegram_bot_message_id:number|undefined):Promise<boolean> {
+    export async function sendStep(step:string, record_id:string):Promise<boolean> {
         const config = getAppConfig();
-        const url = `${config.ejecreator.api.url}?env=${config.env}&step=content_request&record_id=${record_id}`;
+        const url = `${config.ejecreator.api.url}?env=${config.env}&step=${step}&record_id=${record_id}`;
         return await fetch(url, {
             method: "GET",
-        }).then(res=>{
-            return true;
-        }).catch(err=>{
-            return false;
-        })
-    }
-
-    export async function sendImageConfirmYes(recordId:string):Promise<boolean> {
-        const config = getAppConfig();
-        const url = `${config.ejecreator.api.url}?step=image-confirm-yes&record_id=${recordId}`;
-        return await fetch(url, {
-            method: "GET"
         }).then(res=>{
             return true;
         }).catch(err=>{

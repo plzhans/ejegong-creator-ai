@@ -1,4 +1,4 @@
-import { QuoteDto, QutoeStatus } from "../datatypes/QuoteDto"
+import { QuoteDto } from "../datatypes/QuoteDto"
 import { createLogger } from "../lib/logger";
 import { Logger } from "winston";
 import { getAppConfig } from "../config";
@@ -10,6 +10,7 @@ import { EditMessageTextOptions, InlineKeyboardMarkup, SendMessageOptions } from
 import telegramLib from "../lib/telegramLib";
 import { QuoteImageDomain } from "./QuoteImageDoamin";
 import { Render as CreatomateRender } from "creatomate";
+import { QutoeStatus } from "service-base";
 
 export class QuoteDomain {
     

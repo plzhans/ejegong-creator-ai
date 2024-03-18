@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { isEmpty } from "lodash";
 import Airtable, { FieldSet } from "airtable";
 import { getAppConfig } from "../config";
-import { BaseLogger } from "service-base";
+import { BaseLogger, QutoeStatus } from "service-base";
 import path from "path";
 import EjeCreator from "../lib/ejecreator";
 
@@ -24,8 +24,16 @@ function getQuoteTable():Airtable.Table<FieldSet>{
 
 export namespace CommandShorts {
 
+    export const Name = "shorts";
+
     export enum CallbackTypes {
         CALLBACK_CONTENT_REQUEST = "001"
+    }
+
+    export function getMyCommands():TelegramBot.BotCommand[]{
+        return [
+            {command:Name , description: "명언"}
+        ]
     }
 
     export async function onMessage({ bot, msg, metadata, commands }: { bot: TelegramBot; msg: TelegramBot.Message; metadata: TelegramBot.Metadata | undefined; commands: string[]; }){
@@ -66,11 +74,20 @@ export namespace CommandShorts {
                             message_id: msg.message_id,
                             reply_markup: {
                                 inline_keyboard: [[{
-                                    text: "컨텐츠 생성",
+                                    text: "Retry",
                                     callback_data: [commands[0], CallbackTypes.CALLBACK_CONTENT_REQUEST, record.id].join(';')
                                 }]]
                             }
-                        }).catch(err=>{
+                        }).then(msg=>{
+                            EjeCreator.sendStep(QutoeStatus.Content_Request,record.getId())
+                            .then(res=>{
+                                logger.info(`EjeCreator.sendContentRequest(): ok. ${res}`);
+                            })
+                            .catch(err=>{
+                                logger.error(`EjeCreator.sendContentRequest(): error. ${err}`);
+                            });
+                        })
+                        .catch(err=>{
                             logger.error(`editMessageText(): error. ${err}`);
                         });
                     }).catch(err=>{
@@ -101,7 +118,7 @@ export namespace CommandShorts {
                     return;
                 }
 
-                EjeCreator.sendContentRequest(record_id, query.message?.message_id)
+                EjeCreator.sendStep(QutoeStatus.Content_Request, record_id)
                     .then(res=>{
                         logger.info(`EjeCreator.sendContentRequest(): ok. ${res}`);
                     })
