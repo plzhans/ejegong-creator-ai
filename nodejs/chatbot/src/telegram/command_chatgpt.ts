@@ -71,13 +71,11 @@ export namespace CommandChatGPT {
             return;
         }
         
-
-        const openai = getOpenAI();
-
         const rMsg = await telegramBot.getBot().sendMessage(msg.chat.id, "GPT에게 물어보는 중...", {
             reply_to_message_id: msg.message_id
         });
 
+        const openai = getOpenAI();
         const completion = await openai.chat.completions.create({
             messages: [
                 { role: 'system', content: "대답은 반말. 명사 위주의 단답형." },
@@ -93,13 +91,21 @@ export namespace CommandChatGPT {
                     chat_id: rMsg.chat.id,
                     message_id: rMsg.message_id,
                 });
+            } else {
+                await telegramBot.getBot().editMessageText("나도 몰라~", {
+                    chat_id: rMsg.chat.id,
+                    message_id: rMsg.message_id,
+                });
             }
         } else {
-
+            await telegramBot.getBot().editMessageText("나도 몰라~~", {
+                chat_id: rMsg.chat.id,
+                message_id: rMsg.message_id,
+            });
         }
     }
 
-    export function onCallbackQuery(bot:TelegramBot, query:TelegramBot.CallbackQuery, args:string[]){
+    export function onCallbackQuery(_bot:TelegramBot, _query:TelegramBot.CallbackQuery, _args:string[]){
         
     }
 }
