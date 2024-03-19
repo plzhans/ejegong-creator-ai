@@ -26,22 +26,28 @@ export function telegramEventMessage(bot:TelegramBot, botUser:TelegramBot.User, 
     if(msg.reply_to_message?.text === CommandChatGPT.ForceReplyText){
         return CommandChatGPT.onMessage({ bot, msg, metadata });
     }
+    if(msg.reply_to_message?.text === CommandShorts.ForceReplyText){
+        return CommandShorts.onMessage({ bot, msg, metadata });
+    }
 }
 
 export function telegramEventCallbackQuery(bot:TelegramBot, botUser:TelegramBot.User, query:TelegramBot.CallbackQuery){
-    if(!query.data){
-        return;
+    if(query.data){
+        const args = query.data.split(';');
+        if(args.length > 0){
+            switch(args[0].charAt(0)){
+                case 'A':
+                    return CommandShorts.onCallbackQuery(bot,  query, args);
+                case 'B': 
+                    return CommandChatGPT.onCallbackQuery(bot,  query, args);
+                case "T":
+                    return CommandTest.onCallbackQuery(bot, query, args);
+                default:
+                    break;
+            }
+        }
     }
-    
-    const args = query.data.split(';');
-    switch(args[0]){
-        case CommandShorts.Name:
-        case `${CommandShorts.Name}@${botUser.username}`:
-            return CommandShorts.onCallbackQuery(bot,  query, args);
-        case CommandChatGPT.Name: 
-        case `${CommandChatGPT.Name}@${botUser.username}`:
-            return CommandChatGPT.onCallbackQuery(bot,  query, args);
-        case "test":
-            return CommandTest.onCallbackQuery(bot, query, args);
-    }
+    bot.answerCallbackQuery(query.id).catch(err=>{
+        logger.error(`bot.answerCallbackQuery(): error. ${err}`);
+    });
 }

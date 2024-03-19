@@ -101,7 +101,7 @@ namespace telegramBot {
 
         bot.sendMessage(config.telegram.bot.default_chat_id, message)
             .catch(err=>{
-                logger.error(`bot.editMessageText(): fail. ${err}`);
+                logger.error(`bot.sendMessage(): fail. ${err}`);
             });
     }
 

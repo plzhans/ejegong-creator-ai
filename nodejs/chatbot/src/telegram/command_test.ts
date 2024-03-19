@@ -1,4 +1,8 @@
 import TelegramBot from "node-telegram-bot-api";
+import path from "path";
+import { BaseLogger } from "service-base";
+
+const logger = BaseLogger.createLogger(path.basename(__filename, path.extname(__filename)));
 
 export namespace CommandTest {
 
@@ -24,7 +28,9 @@ export namespace CommandTest {
     }
 
     export function onCallbackQuery(bot:TelegramBot, query:TelegramBot.CallbackQuery, args:string[]){
-        
+        bot.answerCallbackQuery(query.id).catch(err=>{
+            logger.error(`bot.answerCallbackQuery(): error. ${err}`);
+        });
     }
 }
 
